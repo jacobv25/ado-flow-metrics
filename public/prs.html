@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PR Aging Tracker — Azure DevOps</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"
+    integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi"
+    crossorigin="anonymous"
+  ></script>
+  <script src="common.js"></script>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-icon">🔀</span>
+  <span class="topbar-title">ADO Aging Tracker</span>
+  <nav class="topbar-nav">
+    <a href="index.html">Work Items</a>
+    <a href="prs.html" class="active">Pull Requests</a>
+  </nav>
+  <span class="topbar-sub" id="topProject"></span>
+  <div class="topbar-right">
+    <span class="last-refresh" id="lastRefresh"></span>
+    <button class="btn btn-ghost" id="refreshBtn" onclick="loadData()">
+      <span class="spinner" id="refreshSpinner"></span>
+      ↻ Refresh
+    </button>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-ring"></div>
+  <div class="loading-msg" id="loadingMsg">Loading…</div>
+</div>
+
+<div class="page">
+
+  <!-- SERVER INFO STRIP -->
+  <div class="server-strip" id="serverStrip">
+    <span>🔒</span>
+    <span>Connected to local proxy — your PAT stays on the server.</span>
+    <span id="serverProjectLabel"></span>
+  </div>
+
+  <!-- APPROXIMATE STALENESS NOTICE -->
+  <div class="notice-banner on" id="staleness-notice">
+    <span>ℹ️</span>
+    <span>
+      <strong>Staleness is approximate</strong> — days shown reflect PR age since creation,
+      not the true last-activity date. Last Activity and Stale Days will show <em>—</em> until
+      a future update adds per-PR activity lookups.
+    </span>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div class="settings-panel">
+    <div class="settings-header" onclick="toggleSettings()">
+      <span class="status-dot" id="statusDot"></span>
+      <h2>⚙️ Display Settings</h2>
+      <span class="settings-toggle" id="settingsToggle">▼ Show</span>
+    </div>
+    <div class="settings-body hidden" id="settingsBody">
+      <div class="field">
+        <label>PR Status</label>
+        <select id="cfgStatus">
+          <option value="active">Active (open PRs)</option>
+          <option value="all">All (active + completed + abandoned)</option>
+          <option value="completed">Completed</option>
+          <option value="abandoned">Abandoned</option>
+        </select>
+        <small>Which PRs to include in the main table</small>
+      </div>
+      <div class="field">
+        <label>Aging Thresholds (days: t1, t2, t3)</label>
+        <input type="text" id="cfgThresholds" value="1,3,7" />
+        <small>Green ≤ t1 · Yellow ≤ t2 · Orange ≤ t3 · Red &gt; t3</small>
+      </div>
+      <div class="field">
+        <label>Max Items</label>
+        <input type="number" id="cfgMax" min="10" max="500" value="200" />
+        <small>Maximum PRs to load (capped at 500 by the server)</small>
+      </div>
+      <div class="field">
+        <label>Cycle-time Window</label>
+        <select id="cfgCycleDays">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <small>Time window for completed-PR cycle-time chart</small>
+      </div>
+    </div>
+    <div class="settings-footer" id="settingsFooter" style="display:none">
+      <button class="btn btn-save" onclick="savePrefs()">💾 Save &amp; Refresh</button>
+      <span class="settings-msg" id="settingsMsg"></span>
+    </div>
+  </div>
+
+  <!-- ERROR BANNER -->
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Open PRs</div>
+      <div class="card-value" id="statTotal">—</div>
+      <div class="card-sub">active pull requests</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Avg Age</div>
+      <div class="card-value" id="statAvg">—</div>
+      <div class="card-sub">days since creation</div>
+    </div>
+    <div class="card yellow">
+      <div class="card-label">⏳ Awaiting Review</div>
+      <div class="card-value" id="statAwaiting">—</div>
+      <div class="card-sub">no reviewer decision yet</div>
+    </div>
+    <div class="card red">
+      <div class="card-label">🔴 Critical Age</div>
+      <div class="card-value" id="statCritical">—</div>
+      <div class="card-sub" id="lblCritical">older than 7d</div>
+    </div>
+    <div class="card green">
+      <div class="card-label">✅ Avg Time-to-Merge</div>
+      <div class="card-value" id="statCycleAvg">—</div>
+      <div class="card-sub" id="lblCycleWindow">last 30 days</div>
+    </div>
+  </div>
+
+  <!-- CHART + FILTER ROW -->
+  <div class="row-2col">
+
+    <!-- Aging distribution chart -->
+    <div class="panel">
+      <div class="panel-header">📊 PR Age Distribution</div>
+      <div class="panel-body">
+        <div class="chart-wrap"><canvas id="agingChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Filter panel -->
+    <div class="panel">
+      <div class="panel-header">🔽 Filters</div>
+      <div class="panel-body">
+        <div class="filter-group">
+          <label>Review State</label>
+          <div class="check-list">
+            <label><input type="checkbox" id="fAwaiting"  checked onchange="applyFilters()"> ⏳ Awaiting</label>
+            <label><input type="checkbox" id="fApproved"  checked onchange="applyFilters()"> ✅ Approved</label>
+            <label><input type="checkbox" id="fChanges"   checked onchange="applyFilters()"> 🔄 Needs Changes</label>
+            <label><input type="checkbox" id="fRejected"  checked onchange="applyFilters()"> ❌ Rejected</label>
+            <label><input type="checkbox" id="fDraft"     checked onchange="applyFilters()"> 📝 Draft</label>
+            <label><input type="checkbox" id="fNone"      checked onchange="applyFilters()"> — No Reviewer</label>
+          </div>
+        </div>
+        <div class="filter-group" style="margin-top:16px">
+          <label>Other</label>
+          <div class="check-list">
+            <label><input type="checkbox" id="fConflicts" onchange="applyFilters()"> ⚠️ Conflicts Only</label>
+          </div>
+        </div>
+        <div class="filter-group" style="margin-top:16px">
+          <label>Age Band Key</label>
+          <div class="band-legend">
+            <div class="band-item"><span class="band-swatch" style="background:#dff6dd;border:1px solid #a7f3d0"></span><span id="bandGreen">🟢 On Track (0–1d)</span></div>
+            <div class="band-item"><span class="band-swatch" style="background:#fff4ce;border:1px solid #fde68a"></span><span id="bandYellow">🟡 Watch (2–3d)</span></div>
+            <div class="band-item"><span class="band-swatch" style="background:#fdede3;border:1px solid #fcd9bd"></span><span id="bandOrange">🟠 At Risk (4–7d)</span></div>
+            <div class="band-item"><span class="band-swatch" style="background:#fde7e9;border:1px solid #f9c6c6"></span><span id="bandRed">🔴 Critical (8+d)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CYCLE-TIME CHART ROW -->
+  <div class="panel" style="margin-bottom:20px">
+    <div class="panel-header">⏱️ Time-to-Merge Distribution <span id="cycleSubhead" style="font-weight:400;font-size:12px;color:var(--gray-600)"></span></div>
+    <div class="panel-body">
+      <div class="chart-wrap"><canvas id="cycleChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- PR TABLE -->
+  <div class="panel table-panel">
+    <div class="table-toolbar">
+      <h3 id="tableTitle">Pull Requests (0)</h3>
+      <input class="search-input" id="searchInput" type="text"
+        placeholder="🔍 Search title, author, repo…" oninput="applyFilters()" />
+      <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+        <option value="age_desc">Most Aged First</option>
+        <option value="age_asc">Least Aged First</option>
+        <option value="id_asc">ID ↑</option>
+        <option value="id_desc">ID ↓</option>
+        <option value="title_asc">Title A→Z</option>
+        <option value="repo_asc">Repo A→Z</option>
+        <option value="author_asc">Author A→Z</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="setSortCol('id')"     data-col="id">ID ↕</th>
+            <th onclick="setSortCol('repo')"   data-col="repo">Repo ↕</th>
+            <th onclick="setSortCol('title')"  data-col="title">Title ↕</th>
+            <th onclick="setSortCol('author')" data-col="author">Author ↕</th>
+            <th onclick="setSortCol('age')"    data-col="age">Age ↕</th>
+            <th>Last Activity ⚠︎</th>
+            <th>Review State</th>
+            <th>Reviewers</th>
+            <th onclick="setSortCol('target')" data-col="target">Target Branch ↕</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr>
+            <td colspan="9">
+              <div class="empty-state">
+                <div class="icon">🔗</div>
+                <p>Waiting for data from the local proxy server…</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <span id="pageInfo">—</span>
+      <div class="page-btns" id="pageBtns"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    PR Aging Tracker · Data via local proxy · No secrets in this page ·
+    ⚠︎ Staleness figures are approximate (PR age, not true last-activity date)
+  </div>
+</div>
+
+<script>
+'use strict';
+// common.js provides: esc, initials, nameToHue, fmtDate, ageBand, apiFetch,
+// setLoading, showError, hideError, setStatusDot, loadServerConfig,
+// toggleSettings, collapseSettings, buildPaginationButtons
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let allItems      = [];
+let filteredItems = [];
+let currentPage   = 1;
+let agingChart    = null;
+let cycleChart    = null;
+const PAGE_SIZE   = 25;
+
+// ─── Preferences ─────────────────────────────────────────────────────────────
+function getPrefs() {
+  return {
+    status:     localStorage.getItem('pr_status')     || 'active',
+    thresholds: localStorage.getItem('pr_thresholds') || '1,3,7',
+    max:        localStorage.getItem('pr_max')        || '200',
+    cycleDays:  localStorage.getItem('pr_cycleDays')  || '30',
+  };
+}
+
+function loadPrefsIntoForm() {
+  const p = getPrefs();
+  document.getElementById('cfgStatus').value     = p.status;
+  document.getElementById('cfgThresholds').value = p.thresholds;
+  document.getElementById('cfgMax').value        = p.max;
+  document.getElementById('cfgCycleDays').value  = p.cycleDays;
+}
+
+function savePrefs() {
+  localStorage.setItem('pr_status',     document.getElementById('cfgStatus').value);
+  localStorage.setItem('pr_thresholds', document.getElementById('cfgThresholds').value.trim());
+  localStorage.setItem('pr_max',        document.getElementById('cfgMax').value.trim());
+  localStorage.setItem('pr_cycleDays',  document.getElementById('cfgCycleDays').value);
+  const msg = document.getElementById('settingsMsg');
+  msg.textContent = '✅ Saved';
+  msg.className   = 'settings-msg';
+  setTimeout(() => { msg.textContent = ''; }, 2500);
+  collapseSettings();
+  loadData();
+}
+
+// ─── Thresholds ───────────────────────────────────────────────────────────────
+function parseThresholds() {
+  const raw = getPrefs().thresholds.split(',').map(Number);
+  return [raw[0] || 1, raw[1] || 3, raw[2] || 7];
+}
+
+function getAgeBand(days) {
+  return ageBand(days, parseThresholds());
+}
+
+function updateBandLabels() {
+  const [t1, t2, t3] = parseThresholds();
+  document.getElementById('bandGreen').textContent  = `🟢 On Track (0–${t1}d)`;
+  document.getElementById('bandYellow').textContent = `🟡 Watch (${t1+1}–${t2}d)`;
+  document.getElementById('bandOrange').textContent = `🟠 At Risk (${t2+1}–${t3}d)`;
+  document.getElementById('bandRed').textContent    = `🔴 Critical (${t3+1}+d)`;
+  document.getElementById('lblCritical').textContent = `older than ${t3}d`;
+}
+
+// ─── Review state helpers ─────────────────────────────────────────────────────
+const REVIEW_LABEL = {
+  awaiting: '⏳ Awaiting',
+  approved: '✅ Approved',
+  changes:  '🔄 Changes',
+  rejected: '❌ Rejected',
+  draft:    '📝 Draft',
+  none:     '— None',
+};
+
+const REVIEW_CSS = {
+  awaiting: 'review-awaiting',
+  approved: 'review-approved',
+  changes:  'review-changes',
+  rejected: 'review-rejected',
+  draft:    'review-draft',
+  none:     'review-none',
+};
+
+// ─── Load data ────────────────────────────────────────────────────────────────
+async function loadData() {
+  const prefs  = getPrefs();
+  const params = new URLSearchParams({ status: prefs.status, max: prefs.max });
+
+  setLoading(true, 'Fetching pull requests…');
+  hideError();
+
+  try {
+    // Fire both requests in parallel
+    const [prData, cycleData] = await Promise.all([
+      apiFetch(`/api/pr-aging?${params}`),
+      apiFetch(`/api/pr-cycle-time?days=${prefs.cycleDays}`),
+    ]);
+
+    allItems = prData.items || [];
+    applyFilters();
+    updateSummaryCards(cycleData);
+    updateCycleChart(cycleData);
+    setStatusDot('ok');
+    document.getElementById('lastRefresh').textContent =
+      'Refreshed ' + new Date().toLocaleTimeString();
+  } catch (err) {
+    showError(err.message);
+    setStatusDot('err');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ─── Filters + sort ───────────────────────────────────────────────────────────
+function applyFilters() {
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+  const fMap = {
+    awaiting: document.getElementById('fAwaiting').checked,
+    approved: document.getElementById('fApproved').checked,
+    changes:  document.getElementById('fChanges').checked,
+    rejected: document.getElementById('fRejected').checked,
+    draft:    document.getElementById('fDraft').checked,
+    none:     document.getElementById('fNone').checked,
+  };
+  const conflictsOnly = document.getElementById('fConflicts').checked;
+
+  filteredItems = allItems.filter(pr => {
+    if (!fMap[pr.reviewState])                      return false;
+    if (conflictsOnly && !pr.hasMergeConflict)      return false;
+    if (q && ![pr.title, pr.createdBy, pr.repo, String(pr.id)]
+          .some(s => s.toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  const sv  = document.getElementById('sortSelect').value;
+  const dir = sv.endsWith('_desc') ? -1 : 1;
+  const key = sv.replace(/_asc|_desc$/, '');
+  filteredItems.sort((a, b) => {
+    if (key === 'age')    return dir * (a.ageDays - b.ageDays);
+    if (key === 'id')     return dir * (a.id - b.id);
+    if (key === 'title')  return dir * a.title.localeCompare(b.title);
+    if (key === 'repo')   return dir * a.repo.localeCompare(b.repo);
+    if (key === 'author') return dir * a.createdBy.localeCompare(b.createdBy);
+    if (key === 'target') return dir * a.targetRef.localeCompare(b.targetRef);
+    return 0;
+  });
+
+  currentPage = 1;
+  renderTable();
+  updateAgingChart();
+}
+
+function setSortCol(col) {
+  const sel = document.getElementById('sortSelect');
+  sel.value = sel.value.startsWith(col) && sel.value.endsWith('_desc')
+    ? col + '_asc' : col + '_desc';
+  applyFilters();
+}
+
+// ─── Summary cards ────────────────────────────────────────────────────────────
+function updateSummaryCards(cycleData) {
+  const [,, t3] = parseThresholds();
+
+  document.getElementById('statTotal').textContent    = allItems.length;
+  document.getElementById('statAwaiting').textContent =
+    allItems.filter(p => p.reviewState === 'awaiting').length;
+  document.getElementById('statCritical').textContent =
+    allItems.filter(p => p.ageDays > t3).length;
+
+  if (allItems.length > 0) {
+    const avg = Math.round(allItems.reduce((s, p) => s + p.ageDays, 0) / allItems.length);
+    document.getElementById('statAvg').textContent = avg + 'd';
+  }
+
+  // Cycle-time card
+  const prefs = getPrefs();
+  document.getElementById('lblCycleWindow').textContent = `last ${prefs.cycleDays} days`;
+  if (cycleData && cycleData.avgDays !== null) {
+    document.getElementById('statCycleAvg').textContent = cycleData.avgDays + 'd';
+  } else {
+    document.getElementById('statCycleAvg').textContent = '—';
+  }
+  document.getElementById('cycleSubhead').textContent =
+    cycleData ? `(${cycleData.count} PRs merged in last ${cycleData.days} days)` : '';
+}
+
+// ─── Aging distribution chart ─────────────────────────────────────────────────
+function updateAgingChart() {
+  const [t1, t2, t3] = parseThresholds();
+  const buckets = [0, 0, 0, 0];
+  filteredItems.forEach(p => { buckets[getAgeBand(p.ageDays).idx]++; });
+
+  const labels = [
+    `🟢 On Track (0–${t1}d)`,
+    `🟡 Watch (${t1+1}–${t2}d)`,
+    `🟠 At Risk (${t2+1}–${t3}d)`,
+    `🔴 Critical (${t3+1}+d)`,
+  ];
+
+  if (agingChart) {
+    agingChart.data.labels           = labels;
+    agingChart.data.datasets[0].data = buckets;
+    agingChart.update();
+    return;
+  }
+
+  agingChart = new Chart(document.getElementById('agingChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'PRs',
+        data:  buckets,
+        backgroundColor: ['#dff6dd','#fff4ce','#fdede3','#fde7e9'],
+        borderColor:     ['#107c10','#c19c00','#d83b01','#a80000'],
+        borderWidth: 2,
+        borderRadius: 5,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${c.raw} PR${c.raw !== 1 ? 's' : ''}` } },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ─── Cycle-time chart ─────────────────────────────────────────────────────────
+function updateCycleChart(data) {
+  const items = (data && data.items) || [];
+
+  // Build a histogram of mergeDays bucketed into bands: 0–1, 2–3, 4–7, 8–14, 15+
+  const bandDefs = [
+    { label: '0–1d',  max: 1 },
+    { label: '2–3d',  max: 3 },
+    { label: '4–7d',  max: 7 },
+    { label: '8–14d', max: 14 },
+    { label: '15+d',  max: Infinity },
+  ];
+  const counts = new Array(bandDefs.length).fill(0);
+  items.forEach(pr => {
+    const idx = bandDefs.findIndex(b => pr.mergeDays <= b.max);
+    if (idx >= 0) counts[idx]++;
+  });
+
+  const labels = bandDefs.map(b => b.label);
+
+  if (cycleChart) {
+    cycleChart.data.labels           = labels;
+    cycleChart.data.datasets[0].data = counts;
+    cycleChart.update();
+    return;
+  }
+
+  cycleChart = new Chart(document.getElementById('cycleChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Merged PRs',
+        data:  counts,
+        backgroundColor: ['#dff6dd','#fff4ce','#fdede3','#fde7e9','#fde7e9'],
+        borderColor:     ['#107c10','#c19c00','#d83b01','#a80000','#a80000'],
+        borderWidth: 2,
+        borderRadius: 5,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => ` ${c.raw} PR${c.raw !== 1 ? 's' : ''}` } },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ─── Table rendering ──────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+
+  if (!filteredItems.length) {
+    const msg = allItems.length
+      ? 'No PRs match the current filters.'
+      : 'No pull requests found for the selected status.';
+    const tr  = document.createElement('tr');
+    const td  = document.createElement('td');
+    td.colSpan = 9;
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.innerHTML = `<div class="icon">✅</div><p>${esc(msg)}</p>`;
+    td.appendChild(div);
+    tr.appendChild(td);
+    tbody.replaceChildren(tr);
+    document.getElementById('pageInfo').textContent    = '0 PRs';
+    document.getElementById('pageBtns').innerHTML     = '';
+    document.getElementById('tableTitle').textContent = 'Pull Requests (0)';
+    return;
+  }
+
+  const total      = filteredItems.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const start      = (currentPage - 1) * PAGE_SIZE;
+  const pageItems  = filteredItems.slice(start, start + PAGE_SIZE);
+
+  const rows = pageItems.map(pr => {
+    const band = getAgeBand(pr.ageDays);
+    const hue  = nameToHue(pr.createdBy);
+
+    const tr = document.createElement('tr');
+
+    // ── ID + link ──
+    const tdId = document.createElement('td');
+    const a    = document.createElement('a');
+    a.className   = 'id-link';
+    a.href        = pr.url;
+    a.target      = '_blank';
+    a.rel         = 'noopener';
+    a.textContent = `#${pr.id}`;
+    tdId.appendChild(a);
+    tr.appendChild(tdId);
+
+    // ── Repo ──
+    const tdRepo = document.createElement('td');
+    tdRepo.textContent = pr.repo;
+    tr.appendChild(tdRepo);
+
+    // ── Title (+ conflict badge + draft badge) ──
+    const tdTitle = document.createElement('td');
+    tdTitle.className = 'title-cell';
+    const titleSpan = document.createElement('span');
+    titleSpan.className   = 'title-text';
+    titleSpan.title       = pr.title;
+    titleSpan.textContent = pr.title;
+    tdTitle.appendChild(titleSpan);
+    if (pr.hasMergeConflict) {
+      const cb = document.createElement('span');
+      cb.className   = 'conflict-badge';
+      cb.textContent = '⚠ CONFLICT';
+      tdTitle.appendChild(cb);
+    }
+    if (pr.isDraft) {
+      const db = document.createElement('span');
+      db.className   = 'draft-badge';
+      db.textContent = 'DRAFT';
+      tdTitle.appendChild(db);
+    }
+    tr.appendChild(tdTitle);
+
+    // ── Author ──
+    const tdAuthor   = document.createElement('td');
+    const avatarWrap = document.createElement('div');
+    avatarWrap.className = 'assigned-avatar';
+    const circle = document.createElement('div');
+    circle.className        = 'avatar-circle';
+    circle.style.background = `hsl(${hue},50%,38%)`;
+    circle.textContent      = initials(pr.createdBy);
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = pr.createdBy;
+    avatarWrap.append(circle, nameSpan);
+    tdAuthor.appendChild(avatarWrap);
+    tr.appendChild(tdAuthor);
+
+    // ── Age ──
+    const tdAge = document.createElement('td');
+    tdAge.className   = 'aging-cell';
+    tdAge.style.color = band.color;
+    const agePill = document.createElement('span');
+    agePill.className   = `age-pill ${band.cls}`;
+    agePill.textContent = `${band.emoji} ${pr.ageDays}d`;
+    tdAge.appendChild(agePill);
+    tr.appendChild(tdAge);
+
+    // ── Last Activity (approximate) ──
+    const tdActivity = document.createElement('td');
+    // staleDays is null in S1 (staleness=off); show age as approximate
+    if (pr.staleDays !== null) {
+      tdActivity.textContent = `${pr.staleDays}d ago`;
+    } else {
+      // Show PR age as the approximation with a visual cue
+      const approxSpan = document.createElement('span');
+      approxSpan.title       = 'Approximate — equals PR age. Actual last-activity date requires a future upgrade.';
+      approxSpan.style.color = 'var(--gray-400)';
+      approxSpan.textContent = `~${pr.ageDays}d ago`;
+      tdActivity.appendChild(approxSpan);
+    }
+    tr.appendChild(tdActivity);
+
+    // ── Review State ──
+    const tdReview  = document.createElement('td');
+    const revBadge  = document.createElement('span');
+    revBadge.className   = `review-badge ${REVIEW_CSS[pr.reviewState] || 'review-none'}`;
+    revBadge.textContent = REVIEW_LABEL[pr.reviewState] || pr.reviewState;
+    tdReview.appendChild(revBadge);
+    tr.appendChild(tdReview);
+
+    // ── Reviewers (up to 3, then "+N more") ──
+    const tdReviewers = document.createElement('td');
+    const reviewers   = pr.reviewers.filter(r => !r.isContainer);
+    if (reviewers.length === 0) {
+      tdReviewers.textContent = '—';
+    } else {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;align-items:center';
+      const shown = reviewers.slice(0, 3);
+      shown.forEach(r => {
+        const rh      = nameToHue(r.name);
+        const circle2 = document.createElement('div');
+        circle2.className        = 'avatar-circle';
+        circle2.style.background = `hsl(${rh},50%,38%)`;
+        circle2.style.width      = '20px';
+        circle2.style.height     = '20px';
+        circle2.style.fontSize   = '9px';
+        circle2.title            = r.name + (r.isRequired ? ' (required)' : '');
+        circle2.textContent      = initials(r.name);
+        wrap.appendChild(circle2);
+      });
+      if (reviewers.length > 3) {
+        const more = document.createElement('span');
+        more.style.cssText  = 'font-size:11px;color:var(--gray-600)';
+        more.textContent    = `+${reviewers.length - 3}`;
+        wrap.appendChild(more);
+      }
+      tdReviewers.appendChild(wrap);
+    }
+    tr.appendChild(tdReviewers);
+
+    // ── Target branch ──
+    const tdTarget = document.createElement('td');
+    tdTarget.style.cssText = 'font-size:12px;color:var(--gray-600);white-space:nowrap';
+    tdTarget.textContent   = pr.targetRef || '—';
+    tr.appendChild(tdTarget);
+
+    return tr;
+  });
+
+  tbody.replaceChildren(...rows);
+
+  document.getElementById('tableTitle').textContent =
+    `Pull Requests (${total})`;
+  document.getElementById('pageInfo').textContent =
+    `Showing ${start+1}–${Math.min(start+PAGE_SIZE, total)} of ${total}`;
+
+  buildPaginationButtons(
+    document.getElementById('pageBtns'),
+    currentPage, totalPages,
+    goPage
+  );
+}
+
+function goPage(p) {
+  const total = Math.ceil(filteredItems.length / PAGE_SIZE);
+  if (p < 1 || p > total) return;
+  currentPage = p;
+  renderTable();
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(async function init() {
+  loadPrefsIntoForm();
+  updateBandLabels();
+  updateAgingChart();
+
+  const cfg = await loadServerConfig();
+  if (cfg) {
+    window._projectUrl = cfg.projectUrl;
+    loadData();
+  } else {
+    showError(
+      'Cannot reach the local proxy server. ' +
+      'Make sure you ran "npm install && npm start" in the project folder.'
+    );
+  }
+})();
+</script>
+</body>
+</html>
