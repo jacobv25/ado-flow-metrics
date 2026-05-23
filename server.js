@@ -58,8 +58,10 @@ function parseMax(raw) {
   return Math.min(n, 500);
 }
 
-const ALLOWED_PR_STATUS  = new Set(['active', 'completed', 'abandoned', 'all']);
-const ALLOWED_CYCLE_DAYS = new Set([7, 14, 30, 90]);
+const ALLOWED_PR_STATUS    = new Set(['active', 'completed', 'abandoned', 'all']);
+const ALLOWED_CYCLE_DAYS   = new Set([7, 14, 30, 90]);
+const ALLOWED_HISTORY_DAYS = new Set([28, 56, 84, 180]);
+const ALLOWED_INTERVALS    = new Set(['week', 'day']);
 
 function parsePrStatus(raw) {
   const v = (raw || 'active').toLowerCase().trim();
@@ -71,6 +73,55 @@ function parseCycleDays(raw) {
   const n = parseInt(raw || '30', 10);
   if (!ALLOWED_CYCLE_DAYS.has(n)) throw new Error('Invalid days value: ' + raw);
   return n;
+}
+
+function parseHistoryDays(raw) {
+  const n = parseInt(raw || '84', 10);
+  if (!ALLOWED_HISTORY_DAYS.has(n))
+    throw new Error('Invalid days value: ' + raw + '. Allowed: 28, 56, 84, 180');
+  return n;
+}
+
+function parseInterval(raw) {
+  const v = (raw || 'week').toLowerCase().trim();
+  if (!ALLOWED_INTERVALS.has(v))
+    throw new Error('Invalid interval: ' + (raw || '') + '. Allowed: week, day');
+  return v;
+}
+
+function parseItemTypes(raw) {
+  if (!raw || typeof raw !== 'string') return ['User Story', 'Bug'];
+  if (raw.length > 500) throw new Error('types parameter is too long');
+  const types = raw.split(',').map(s => s.trim()).filter(Boolean);
+  if (!types.length) return ['User Story', 'Bug'];
+  if (types.length > 20) throw new Error('Too many types; max is 20');
+  for (const t of types) {
+    if (t.length > 100) throw new Error('Type name too long');
+    if (!/^[\w\s\-()/]+$/.test(t)) throw new Error('Invalid type name: "' + t + '"');
+  }
+  return types;
+}
+
+// ─── Throughput / forecasting helpers ─────────────────────────────────────────
+
+/**
+ * Return the ISO date (YYYY-MM-DD) of the Monday of the week containing `dateStr`.
+ * Weeks are UTC-based (Monday → Sunday).
+ */
+function isoWeekStart(dateStr) {
+  const d   = new Date(dateStr);
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon, …
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon  = new Date(d);
+  mon.setUTCDate(d.getUTCDate() + diff);
+  mon.setUTCHours(0, 0, 0, 0);
+  return mon.toISOString().slice(0, 10);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
 }
 
 // --- PR helpers ---------------------------------------------------------------
@@ -303,6 +354,224 @@ app.get('/api/pr-cycle-time', async (req, res) => {
   }
 });
 
+// GET /api/throughput?days=84&interval=week&states=Closed,Done&types=User+Story,Bug
+app.get('/api/throughput', async (req, res) => {
+  let days, interval, states, types;
+  try {
+    days     = parseHistoryDays(req.query.days);
+    interval = parseInterval(req.query.interval);
+    states   = req.query.states
+      ? parseStates(req.query.states)
+      : ['Closed', 'Done', 'Resolved'];
+    types    = parseItemTypes(req.query.types);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    const since        = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const stateList    = states.map(wiqlString).join(', ');
+    const typeList     = types.map(wiqlString).join(', ');
+    const projectToken = wiqlString(ADO_PROJECT);
+
+    const wiql = [
+      'SELECT [System.Id] FROM WorkItems',
+      'WHERE [System.TeamProject] = ' + projectToken,
+      'AND [System.WorkItemType] IN (' + typeList + ')',
+      'AND [System.State] IN (' + stateList + ')',
+      "AND [Microsoft.VSTS.Common.ClosedDate] >= '" + since + "T00:00:00Z'",
+      'ORDER BY [Microsoft.VSTS.Common.ClosedDate] ASC',
+    ].join(' ');
+
+    const wu = new URL(ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT) + '/_apis/wit/wiql');
+    wu.searchParams.set('api-version', ADO_API_VERSION);
+    const wiqlResult = await adoRequest(wu.toString(), {
+      method: 'POST', body: JSON.stringify({ query: wiql }),
+    });
+
+    const ids = (wiqlResult.workItems || []).map(w => w.id).filter(Boolean);
+    if (!ids.length) {
+      return res.json({
+        interval, buckets: [], totalCompleted: 0,
+        perInterval: { mean: 0, min: 0, max: 0 }, days,
+      });
+    }
+
+    // Batch-fetch ClosedDate
+    const closedItems = [];
+    const BATCH = 200;
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const chunk = ids.slice(i, i + BATCH);
+      const du = new URL(ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT) + '/_apis/wit/workitemsbatch');
+      du.searchParams.set('api-version', ADO_API_VERSION);
+      const details = await adoRequest(du.toString(), {
+        method: 'POST',
+        body: JSON.stringify({
+          ids: chunk,
+          fields: ['System.Id', 'Microsoft.VSTS.Common.ClosedDate'],
+          errorPolicy: 'Omit',
+        }),
+      });
+      for (const raw of details.value || []) {
+        const cd = (raw.fields || {})['Microsoft.VSTS.Common.ClosedDate'];
+        if (cd) closedItems.push({ id: raw.id, closedDate: cd });
+      }
+    }
+
+    // Build time-ordered buckets covering the full history window
+    const bucketMap = new Map(); // key → { start, end, count }
+    const windowStart = new Date(since + 'T00:00:00Z');
+    const today       = new Date();
+    today.setUTCHours(23, 59, 59, 999);
+
+    if (interval === 'week') {
+      // Walk forward in 7-day steps, anchored to the Monday of the window start
+      let cursor = new Date(since + 'T00:00:00Z');
+      const dow  = cursor.getUTCDay();
+      cursor.setUTCDate(cursor.getUTCDate() + (dow === 0 ? -6 : 1 - dow));
+
+      while (cursor <= today) {
+        const start = cursor.toISOString().slice(0, 10);
+        const end   = addDays(start, 6);
+        bucketMap.set(start, { start, end, count: 0 });
+        cursor.setUTCDate(cursor.getUTCDate() + 7);
+      }
+    } else {
+      // Daily buckets
+      let cursor = new Date(windowStart);
+      cursor.setUTCHours(0, 0, 0, 0);
+      while (cursor <= today) {
+        const ds = cursor.toISOString().slice(0, 10);
+        bucketMap.set(ds, { start: ds, end: ds, count: 0 });
+        cursor.setUTCDate(cursor.getUTCDate() + 1);
+      }
+    }
+
+    // Place each item into its bucket
+    for (const item of closedItems) {
+      const key = interval === 'week'
+        ? isoWeekStart(item.closedDate)
+        : item.closedDate.slice(0, 10);
+      if (bucketMap.has(key)) bucketMap.get(key).count++;
+    }
+
+    const buckets        = [...bucketMap.values()];
+    const totalCompleted = closedItems.length;
+    const counts         = buckets.map(b => b.count);
+    const mean = counts.length
+      ? parseFloat((counts.reduce((s, v) => s + v, 0) / counts.length).toFixed(2))
+      : 0;
+
+    res.json({
+      interval, buckets, totalCompleted,
+      perInterval: {
+        mean,
+        min: counts.length ? Math.min(...counts) : 0,
+        max: counts.length ? Math.max(...counts) : 0,
+      },
+      days,
+    });
+  } catch (err) {
+    console.error('[throughput] Error:', err.message);
+    res.status(500).json({ error: adoErrorMessage(err, 'throughput') });
+  }
+});
+
+// GET /api/wi-cycle-time?days=84&states=Closed,Done&types=User+Story,Bug
+app.get('/api/wi-cycle-time', async (req, res) => {
+  let days, states, types;
+  try {
+    days   = parseHistoryDays(req.query.days);
+    states = req.query.states
+      ? parseStates(req.query.states)
+      : ['Closed', 'Done', 'Resolved'];
+    types  = parseItemTypes(req.query.types);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  try {
+    const since        = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    const stateList    = states.map(wiqlString).join(', ');
+    const typeList     = types.map(wiqlString).join(', ');
+    const projectToken = wiqlString(ADO_PROJECT);
+
+    const wiql = [
+      'SELECT [System.Id] FROM WorkItems',
+      'WHERE [System.TeamProject] = ' + projectToken,
+      'AND [System.WorkItemType] IN (' + typeList + ')',
+      'AND [System.State] IN (' + stateList + ')',
+      "AND [Microsoft.VSTS.Common.ClosedDate] >= '" + since + "T00:00:00Z'",
+      'ORDER BY [Microsoft.VSTS.Common.ClosedDate] ASC',
+    ].join(' ');
+
+    const wu = new URL(ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT) + '/_apis/wit/wiql');
+    wu.searchParams.set('api-version', ADO_API_VERSION);
+    const wiqlResult = await adoRequest(wu.toString(), {
+      method: 'POST', body: JSON.stringify({ query: wiql }),
+    });
+
+    const ids = (wiqlResult.workItems || []).map(w => w.id).filter(Boolean);
+    if (!ids.length) {
+      return res.json({
+        items: [], total: 0, avgDays: null,
+        p50: null, p85: null, p95: null,
+        startField: 'ActivatedDate', days,
+      });
+    }
+
+    const FIELDS = [
+      'System.Id', 'System.Title', 'System.WorkItemType',
+      'Microsoft.VSTS.Common.ClosedDate',
+      'Microsoft.VSTS.Common.ActivatedDate',
+    ];
+    const allItems = [];
+    const BATCH    = 200;
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const chunk = ids.slice(i, i + BATCH);
+      const du = new URL(ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT) + '/_apis/wit/workitemsbatch');
+      du.searchParams.set('api-version', ADO_API_VERSION);
+      const details = await adoRequest(du.toString(), {
+        method: 'POST',
+        body: JSON.stringify({ ids: chunk, fields: FIELDS, errorPolicy: 'Omit' }),
+      });
+      for (const raw of details.value || []) {
+        const f             = raw.fields || {};
+        const closedDate    = f['Microsoft.VSTS.Common.ClosedDate'];
+        const activatedDate = f['Microsoft.VSTS.Common.ActivatedDate'];
+        if (!closedDate || !activatedDate) continue;
+        const cycleDays = parseFloat(
+          ((new Date(closedDate) - new Date(activatedDate)) / 86400000).toFixed(1)
+        );
+        if (cycleDays < 0) continue; // skip bad data
+        allItems.push({
+          id:         Number(f['System.Id'] || raw.id),
+          type:       String(f['System.WorkItemType'] || 'Unknown'),
+          cycleDays,
+          closedDate,
+        });
+      }
+    }
+
+    const total = allItems.length;
+    let avgDays = null, p50 = null, p85 = null, p95 = null;
+    if (total > 0) {
+      const sorted = [...allItems].sort((a, b) => a.cycleDays - b.cycleDays);
+      avgDays = parseFloat(
+        (allItems.reduce((s, i) => s + i.cycleDays, 0) / total).toFixed(1)
+      );
+      p50 = sorted[Math.floor(0.50 * sorted.length)].cycleDays;
+      p85 = sorted[Math.min(Math.floor(0.85 * sorted.length), total - 1)].cycleDays;
+      p95 = sorted[Math.min(Math.floor(0.95 * sorted.length), total - 1)].cycleDays;
+    }
+
+    res.json({ items: allItems, total, avgDays, p50, p85, p95, startField: 'ActivatedDate', days });
+  } catch (err) {
+    console.error('[wi-cycle-time] Error:', err.message);
+    res.status(500).json({ error: adoErrorMessage(err, 'work-item cycle time') });
+  }
+});
+
 // --- Start -------------------------------------------------------------------
 validateEnv();
 
@@ -313,5 +582,6 @@ app.listen(PORT, '127.0.0.1', () => {
   console.log('    Org     : ' + ADO_ORG);
   console.log('    API     : ' + ADO_API_VERSION);
   console.log('    PAT     : ' + '*'.repeat(8) + ' (from environment)');
-  console.log('    Routes  : /api/config  /api/wip-aging  /api/pr-aging  /api/pr-cycle-time\n');
+  console.log('    Routes  : /api/config  /api/wip-aging  /api/pr-aging  /api/pr-cycle-time');
+  console.log('              /api/throughput  /api/wi-cycle-time\n');
 });

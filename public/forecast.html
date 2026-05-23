@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delivery Forecast — Azure DevOps</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script
+    src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js"
+    integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi"
+    crossorigin="anonymous"
+  ></script>
+  <script src="common.js"></script>
+  <style>
+    /* ── Forecast-specific overrides ───────────────────────────────────────── */
+    .fc-inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 14px;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .fc-inputs .field { margin: 0; }
+    .fc-run-btn {
+      align-self: flex-end;
+      background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius);
+      padding: 8px 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: background .15s; white-space: nowrap;
+    }
+    .fc-run-btn:hover { background: var(--blue-dark); }
+    .fc-run-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ── Confidence cards ─────────────────────────────────────────────────── */
+    .fc-conf-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .fc-conf-card {
+      background: #fff;
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: var(--shadow);
+      position: relative;
+    }
+    .fc-conf-card .label     { font-size: 11px; font-weight: 700; color: var(--gray-600); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+    .fc-conf-card .value     { font-size: 20px; font-weight: 700; color: var(--gray-800); line-height: 1.1; margin-bottom: 2px; }
+    .fc-conf-card .sub       { font-size: 11px; color: var(--gray-600); }
+    .fc-conf-card .conf-pill {
+      position: absolute; top: 10px; right: 10px;
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 8px;
+    }
+    .conf-50  { background: var(--blue-light);  color: var(--blue-dark); }
+    .conf-70  { background: var(--green-bg);    color: var(--green); }
+    .conf-85  { background: var(--yellow-bg);   color: var(--yellow); border: 2px solid var(--yellow); }
+    .conf-95  { background: var(--orange-bg);   color: var(--orange); }
+
+    /* ── How-many cut-line card ────────────────────────────────────────────── */
+    .fc-cutline-card {
+      background: var(--yellow-bg);
+      border: 2px solid var(--yellow);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .fc-cutline-card .big { font-size: 22px; font-weight: 700; color: var(--yellow); }
+    .fc-cutline-card p    { margin-top: 6px; color: var(--gray-800); line-height: 1.5; }
+
+    /* ── Low-confidence warning ─────────────────────────────────────────────── */
+    .fc-low-conf {
+      display: none;
+      background: var(--orange-bg);
+      border: 1px solid var(--orange);
+      border-radius: var(--radius);
+      padding: 8px 14px;
+      margin-bottom: 14px;
+      font-size: 12px;
+      color: var(--orange);
+    }
+    .fc-low-conf.on { display: flex; gap: 8px; align-items: flex-start; }
+
+    /* ── Waiting state ─────────────────────────────────────────────────────── */
+    .fc-waiting {
+      text-align: center; padding: 40px 20px;
+      color: var(--gray-400); font-size: 14px;
+    }
+    .fc-waiting .icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── Chart panels ──────────────────────────────────────────────────────── */
+    .chart-wrap-tall { position: relative; height: 240px; }
+
+    /* ── Cycle-time percentile markers in chart ─────────────────────────────── */
+    .ct-stats {
+      display: flex; gap: 18px; padding: 10px 16px;
+      border-top: 1px solid var(--gray-100);
+      font-size: 12px; flex-wrap: wrap;
+    }
+    .ct-stat { display: flex; align-items: center; gap: 6px; }
+    .ct-swatch { width: 18px; height: 3px; border-radius: 2px; }
+
+    /* ── Naive baseline label ─────────────────────────────────────────────── */
+    .fc-baseline {
+      font-size: 11px; color: var(--gray-600);
+      padding: 6px 0 0; text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .fc-conf-cards { grid-template-columns: repeat(2, 1fr); }
+      .fc-inputs { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .fc-conf-cards { grid-template-columns: 1fr; }
+      .fc-inputs { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="topbar-icon">📈</span>
+  <span class="topbar-title">ADO Aging Tracker</span>
+  <nav class="topbar-nav">
+    <a href="index.html">Work Items</a>
+    <a href="prs.html">Pull Requests</a>
+    <a href="forecast.html" class="active">Forecast</a>
+  </nav>
+  <span class="topbar-sub" id="topProject"></span>
+  <div class="topbar-right">
+    <span class="last-refresh" id="lastRefresh"></span>
+    <button class="btn btn-ghost" id="refreshBtn" onclick="loadData()">
+      <span class="spinner" id="refreshSpinner"></span>
+      ↻ Refresh
+    </button>
+  </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-ring"></div>
+  <div class="loading-msg" id="loadingMsg">Loading…</div>
+</div>
+
+<div class="page">
+
+  <!-- SERVER INFO STRIP -->
+  <div class="server-strip" id="serverStrip">
+    <span>🔒</span>
+    <span>Connected to local proxy — your PAT stays on the server.</span>
+    <span id="serverProjectLabel"></span>
+  </div>
+
+  <!-- ASSUMPTIONS BANNER (always visible) -->
+  <div class="notice-banner on">
+    <span>⚠️</span>
+    <span>
+      <strong>Forecast assumptions:</strong>
+      Items are sized like past work · Team delivers at its historical rate ·
+      WIP stays disciplined (don't start all tickets at once) ·
+      History window is representative of the future.
+      Cycle-time start uses <em>ActivatedDate</em> (approximate where missing).
+    </span>
+  </div>
+
+  <!-- SETTINGS PANEL -->
+  <div class="settings-panel">
+    <div class="settings-header" onclick="toggleSettings()">
+      <span class="status-dot" id="statusDot"></span>
+      <h2>⚙️ Forecast Settings</h2>
+      <span class="settings-toggle" id="settingsToggle">▼ Show</span>
+    </div>
+    <div class="settings-body hidden" id="settingsBody">
+      <div class="field">
+        <label>Done States (comma-separated)</label>
+        <input type="text" id="cfgDoneStates" value="Closed,Done,Resolved" />
+        <small>States that count as "completed" — varies by process template</small>
+      </div>
+      <div class="field">
+        <label>Work Item Types (comma-separated)</label>
+        <input type="text" id="cfgTypes" value="User Story,Bug" />
+        <small>Forecast grain — mix Epics/Features in with caution</small>
+      </div>
+      <div class="field">
+        <label>History Window</label>
+        <select id="cfgDays">
+          <option value="56">Last 8 weeks</option>
+          <option value="84" selected>Last 12 weeks</option>
+          <option value="180">Last 26 weeks</option>
+          <option value="28">Last 4 weeks (shorter, less reliable)</option>
+        </select>
+        <small>How far back to pull completed items for throughput</small>
+      </div>
+      <div class="field">
+        <label>Interval</label>
+        <select id="cfgInterval">
+          <option value="week" selected>Weekly (recommended)</option>
+          <option value="day">Daily</option>
+        </select>
+        <small>Bucket size for the throughput chart and simulation</small>
+      </div>
+      <div class="field">
+        <label>Simulation Trials</label>
+        <select id="cfgTrials">
+          <option value="1000">1,000 (fast)</option>
+          <option value="10000" selected>10,000 (recommended)</option>
+          <option value="50000">50,000 (precise)</option>
+        </select>
+        <small>More trials = smoother percentile curves, slower browser</small>
+      </div>
+    </div>
+    <div class="settings-footer" id="settingsFooter" style="display:none">
+      <button class="btn btn-save" onclick="savePrefs()">💾 Save &amp; Refresh</button>
+      <span class="settings-msg" id="settingsMsg"></span>
+    </div>
+  </div>
+
+  <!-- ERROR BANNER -->
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- FORECAST INPUTS -->
+  <div class="fc-inputs">
+    <div class="field">
+      <label>Items to Forecast</label>
+      <input type="number" id="fcItems" min="1" max="1000" value="20" oninput="onInputChange()" />
+      <small>Count of tickets in the batch</small>
+    </div>
+    <div class="field">
+      <label>Target Deadline (optional)</label>
+      <input type="date" id="fcDeadline" oninput="onInputChange()" />
+      <small>"How many by this date?" mode</small>
+    </div>
+    <div style="display:flex;align-items:flex-end">
+      <button class="fc-run-btn" id="runBtn" onclick="runSimulation()" disabled>
+        ▶ Run Forecast
+      </button>
+    </div>
+  </div>
+
+  <!-- LOW-CONFIDENCE WARNING -->
+  <div class="fc-low-conf" id="fcLowConf">
+    <span>⚠️</span>
+    <span id="fcLowConfMsg"></span>
+  </div>
+
+  <!-- SUMMARY CARDS (throughput stats) -->
+  <div class="cards" id="tpCards" style="display:none">
+    <div class="card">
+      <div class="card-label">Completed (window)</div>
+      <div class="card-value" id="tpTotal">—</div>
+      <div class="card-sub" id="tpWindowLabel">items</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Avg Throughput</div>
+      <div class="card-value" id="tpMean">—</div>
+      <div class="card-sub" id="tpIntervalLabel">per week</div>
+    </div>
+    <div class="card green">
+      <div class="card-label">Max in one interval</div>
+      <div class="card-value" id="tpMax">—</div>
+      <div class="card-sub">best week</div>
+    </div>
+    <div class="card yellow">
+      <div class="card-label">Min in one interval</div>
+      <div class="card-value" id="tpMin">—</div>
+      <div class="card-sub">slowest week</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Buckets sampled</div>
+      <div class="card-value" id="tpBuckets">—</div>
+      <div class="card-sub">intervals with data</div>
+    </div>
+  </div>
+
+  <!-- THROUGHPUT CHART -->
+  <div class="panel" style="margin-bottom:20px" id="tpChartPanel" style="display:none">
+    <div class="panel-header">📊 Historical Throughput <span id="tpSubhead" style="font-weight:400;font-size:12px;color:var(--gray-600)"></span></div>
+    <div class="panel-body">
+      <div class="chart-wrap-tall"><canvas id="throughputChart"></canvas></div>
+      <div class="fc-baseline" id="fcBaseline"></div>
+    </div>
+  </div>
+
+  <!-- HOW LONG FORECAST -->
+  <div id="howLongSection">
+    <div class="panel-header" style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 16px;margin-bottom:12px;box-shadow:var(--shadow)">
+      🗓️ How Long to Complete <strong id="fcItemsLabel">20</strong> Items?
+      <span style="font-size:11px;font-weight:400;color:var(--gray-600);margin-left:8px">
+        Commit externally to the 85% date
+      </span>
+    </div>
+    <div id="howLongCards">
+      <div class="fc-waiting"><div class="icon">⏳</div><p>Run the forecast to see completion-date estimates.</p></div>
+    </div>
+    <div class="panel" style="margin-bottom:20px" id="howLongChartPanel">
+      <div class="panel-header">📉 Completion-Date Distribution (CDF) <span style="font-size:11px;font-weight:400;color:var(--gray-600)">— % of simulations done by date</span></div>
+      <div class="panel-body">
+        <div class="chart-wrap-tall"><canvas id="cdfChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW MANY FORECAST -->
+  <div id="howManySection" style="display:none">
+    <div class="panel-header" style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 16px;margin-bottom:12px;box-shadow:var(--shadow)">
+      🎯 How Many Items by <strong id="fcDeadlineLabel">—</strong>?
+      <span style="font-size:11px;font-weight:400;color:var(--gray-600);margin-left:8px">
+        Rank tickets by urgency and commit to the top X
+      </span>
+    </div>
+    <div id="fcCutlineCard" class="fc-cutline-card" style="display:none"></div>
+    <div class="fc-conf-cards" id="howManyCards"></div>
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">📊 Simulated Completion Count Distribution <span style="font-size:11px;font-weight:400;color:var(--gray-600)">— % of simulations completing exactly N items</span></div>
+      <div class="panel-body">
+        <div class="chart-wrap-tall"><canvas id="countDistChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CYCLE-TIME PANEL -->
+  <div class="panel" style="margin-bottom:20px" id="ctPanel">
+    <div class="panel-header">⏱️ Work-Item Cycle-Time Distribution <span id="ctSubhead" style="font-weight:400;font-size:12px;color:var(--gray-600)"></span></div>
+    <div class="panel-body">
+      <div id="ctWaiting" class="fc-waiting"><div class="icon">⌛</div><p>Loading cycle-time data…</p></div>
+      <div id="ctChartWrap" style="display:none">
+        <div class="chart-wrap-tall"><canvas id="ctChart"></canvas></div>
+      </div>
+    </div>
+    <div class="ct-stats" id="ctStats" style="display:none">
+      <div class="ct-stat">
+        <div class="ct-swatch" style="background:#c19c00"></div>
+        <span id="ctP50Label">p50 —</span>
+      </div>
+      <div class="ct-stat">
+        <div class="ct-swatch" style="background:#d83b01"></div>
+        <span id="ctP85Label">p85 —</span>
+      </div>
+      <div class="ct-stat">
+        <div class="ct-swatch" style="background:#a80000"></div>
+        <span id="ctP95Label">p95 —</span>
+      </div>
+      <div class="ct-stat" style="margin-left:auto">
+        <span id="ctAvgLabel" style="color:var(--gray-600)"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Delivery Forecast · Monte Carlo over historical throughput · No secrets in this page ·
+    Cycle-time start ≈ ActivatedDate (D1 method)
+  </div>
+</div>
+
+<script>
+'use strict';
+// common.js provides: esc, fmtDate, apiFetch, setLoading, showError, hideError,
+// setStatusDot, loadServerConfig, toggleSettings, collapseSettings
+
+// ─── Monte Carlo (inlined from lib/montecarlo.js) ─────────────────────────────
+
+function mcPercentile(sortedAsc, p) {
+  if (!sortedAsc || !sortedAsc.length) return 0;
+  if (p <= 0)   return sortedAsc[0];
+  if (p >= 100) return sortedAsc[sortedAsc.length - 1];
+  const idx = Math.min(
+    Math.floor((p / 100) * sortedAsc.length),
+    sortedAsc.length - 1
+  );
+  return sortedAsc[idx];
+}
+
+/**
+ * Forecast how many intervals to complete itemCount items.
+ * Returns { p50, p70, p85, p95, mean, rawIntervals }
+ */
+function mcForecastHowLong(samples, itemCount, trials) {
+  const safe = samples.map(s => Math.max(0, s));
+  const hasPositive = safe.some(s => s > 0);
+  if (!hasPositive) return null;
+
+  const rawIntervals = new Int32Array(trials);
+  const SAFETY = 100000;
+  for (let t = 0; t < trials; t++) {
+    let total = 0, intervals = 0;
+    while (total < itemCount && intervals < SAFETY) {
+      total += safe[Math.floor(Math.random() * safe.length)];
+      intervals++;
+    }
+    rawIntervals[t] = intervals;
+  }
+
+  const sorted = Array.from(rawIntervals).sort((a, b) => a - b);
+  const sum    = sorted.reduce((s, v) => s + v, 0);
+  return {
+    p50:  mcPercentile(sorted, 50),
+    p70:  mcPercentile(sorted, 70),
+    p85:  mcPercentile(sorted, 85),
+    p95:  mcPercentile(sorted, 95),
+    mean: Math.round(sum / trials),
+    rawIntervals: sorted,
+  };
+}
+
+/**
+ * Forecast how many items completed in a fixed number of intervals.
+ * Returns { p50, p70, p85, p95, atLeast50, atLeast70, atLeast85, atLeast95, mean, rawCounts }
+ */
+function mcForecastHowMany(samples, intervals, trials) {
+  const safe = samples.map(s => Math.max(0, s));
+  const rawCounts = new Int32Array(trials);
+  for (let t = 0; t < trials; t++) {
+    let total = 0;
+    for (let i = 0; i < intervals; i++) {
+      total += safe[Math.floor(Math.random() * safe.length)];
+    }
+    rawCounts[t] = Math.round(total);
+  }
+  const sorted = Array.from(rawCounts).sort((a, b) => a - b);
+  const sum    = sorted.reduce((s, v) => s + v, 0);
+  return {
+    p50:  mcPercentile(sorted, 50),
+    p70:  mcPercentile(sorted, 70),
+    p85:  mcPercentile(sorted, 85),
+    p95:  mcPercentile(sorted, 95),
+    // Inverted: "XX% confident of at least this many"
+    atLeast50: mcPercentile(sorted, 50), // median
+    atLeast70: mcPercentile(sorted, 30), // 70% of trials >= this
+    atLeast85: mcPercentile(sorted, 15), // 85% of trials >= this
+    atLeast95: mcPercentile(sorted, 5),  // 95% of trials >= this
+    mean: Math.round(sum / trials),
+    rawCounts: sorted,
+  };
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let throughputData  = null; // from /api/throughput
+let cycleTimeData   = null; // from /api/wi-cycle-time
+let lastSimResult   = null; // { howLong, howMany }
+
+let throughputChart = null;
+let cdfChart        = null;
+let countDistChart  = null;
+let ctChartInst     = null;
+
+// ─── Preferences (fc_* to avoid collisions with wip_* / pr_*) ────────────────
+function getPrefs() {
+  return {
+    doneStates: localStorage.getItem('fc_doneStates') || 'Closed,Done,Resolved',
+    types:      localStorage.getItem('fc_types')      || 'User Story,Bug',
+    days:       localStorage.getItem('fc_days')       || '84',
+    interval:   localStorage.getItem('fc_interval')   || 'week',
+    trials:     localStorage.getItem('fc_trials')     || '10000',
+  };
+}
+
+function loadPrefsIntoForm() {
+  const p = getPrefs();
+  document.getElementById('cfgDoneStates').value = p.doneStates;
+  document.getElementById('cfgTypes').value      = p.types;
+  document.getElementById('cfgDays').value       = p.days;
+  document.getElementById('cfgInterval').value   = p.interval;
+  document.getElementById('cfgTrials').value     = p.trials;
+}
+
+function savePrefs() {
+  localStorage.setItem('fc_doneStates', document.getElementById('cfgDoneStates').value.trim());
+  localStorage.setItem('fc_types',      document.getElementById('cfgTypes').value.trim());
+  localStorage.setItem('fc_days',       document.getElementById('cfgDays').value);
+  localStorage.setItem('fc_interval',   document.getElementById('cfgInterval').value);
+  localStorage.setItem('fc_trials',     document.getElementById('cfgTrials').value);
+  const msg = document.getElementById('settingsMsg');
+  msg.textContent = '✅ Saved';
+  setTimeout(() => { msg.textContent = ''; }, 2500);
+  collapseSettings();
+  loadData();
+}
+
+// ─── Date helpers ─────────────────────────────────────────────────────────────
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addIntervals(startIso, count, intervalDays) {
+  const d = new Date(startIso + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + count * intervalDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysBetweenIso(a, b) {
+  return Math.floor((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000);
+}
+
+function fmtDateShort(isoDate) {
+  if (!isoDate) return '—';
+  return new Date(isoDate + 'T00:00:00Z')
+    .toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ─── Load data from server ────────────────────────────────────────────────────
+async function loadData() {
+  const prefs = getPrefs();
+  const tp    = new URLSearchParams({
+    days:     prefs.days,
+    interval: prefs.interval,
+    states:   prefs.doneStates,
+    types:    prefs.types,
+  });
+  const ct = new URLSearchParams({
+    days:   prefs.days,
+    states: prefs.doneStates,
+    types:  prefs.types,
+  });
+
+  setLoading(true, 'Fetching throughput data…');
+  hideError();
+
+  try {
+    const [tpData, ctData] = await Promise.all([
+      apiFetch('/api/throughput?' + tp),
+      apiFetch('/api/wi-cycle-time?' + ct),
+    ]);
+
+    throughputData = tpData;
+    cycleTimeData  = ctData;
+
+    renderThroughputCards();
+    renderThroughputChart();
+    renderCycleTimeChart();
+    setStatusDot('ok');
+
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('lastRefresh').textContent =
+      'Refreshed ' + new Date().toLocaleTimeString();
+
+    // Auto-run simulation if we have data
+    if (throughputData.buckets && throughputData.buckets.length) {
+      runSimulation();
+    }
+  } catch (err) {
+    showError(err.message);
+    setStatusDot('err');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ─── Throughput cards ─────────────────────────────────────────────────────────
+function renderThroughputCards() {
+  if (!throughputData) return;
+  const d = throughputData;
+  const prefs = getPrefs();
+
+  document.getElementById('tpCards').style.display = '';
+  document.getElementById('tpChartPanel').removeAttribute('style');
+  document.getElementById('tpTotal').textContent   = d.totalCompleted;
+  document.getElementById('tpMean').textContent    = d.perInterval.mean;
+  document.getElementById('tpMax').textContent     = d.perInterval.max;
+  document.getElementById('tpMin').textContent     = d.perInterval.min;
+  document.getElementById('tpBuckets').textContent = d.buckets.length;
+
+  const intLabel = prefs.interval === 'day' ? 'per day' : 'per week';
+  document.getElementById('tpIntervalLabel').textContent = intLabel;
+  document.getElementById('tpWindowLabel').textContent   = `last ${prefs.days} days`;
+  document.getElementById('tpSubhead').textContent       =
+    `(${d.buckets.length} ${prefs.interval}s, ${d.totalCompleted} items)`;
+}
+
+// ─── Throughput chart ─────────────────────────────────────────────────────────
+function renderThroughputChart() {
+  if (!throughputData || !throughputData.buckets.length) return;
+  const d       = throughputData;
+  const labels  = d.buckets.map(b => b.start);
+  const counts  = d.buckets.map(b => b.count);
+  const mean    = d.perInterval.mean;
+  const meanArr = counts.map(() => mean);
+
+  const MEAN_COLOR = '#0078d4';
+
+  if (throughputChart) {
+    throughputChart.data.labels                = labels;
+    throughputChart.data.datasets[0].data      = counts;
+    throughputChart.data.datasets[1].data      = meanArr;
+    throughputChart.update();
+    return;
+  }
+
+  throughputChart = new Chart(document.getElementById('throughputChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Completed',
+          data:  counts,
+          backgroundColor: 'rgba(0,120,212,0.2)',
+          borderColor:     'rgba(0,120,212,0.8)',
+          borderWidth: 1,
+          borderRadius: 3,
+          order: 2,
+        },
+        {
+          type:           'line',
+          label:          'Mean (' + mean + ')',
+          data:           meanArr,
+          borderColor:    MEAN_COLOR,
+          borderWidth:    2,
+          borderDash:     [5, 3],
+          pointRadius:    0,
+          fill:           false,
+          tension:        0,
+          order:          1,
+        },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            title: ctx => {
+              const b = throughputData.buckets[ctx[0].dataIndex];
+              return b ? (b.start === b.end ? b.start : b.start + ' → ' + b.end) : ctx[0].label;
+            },
+            label: ctx => ` ${ctx.raw} item${ctx.raw !== 1 ? 's' : ''}`,
+          },
+        },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { font: { size: 10 }, maxRotation: 45 }, grid: { display: false } },
+      },
+    },
+  });
+
+  document.getElementById('fcBaseline').textContent =
+    'Naive baseline: ' + mean + ' items/' +
+    (getPrefs().interval === 'day' ? 'day' : 'week') + ' average. ' +
+    'Monte Carlo range below accounts for variability.';
+}
+
+// ─── Simulation inputs / triggers ────────────────────────────────────────────
+function onInputChange() {
+  if (lastSimResult && throughputData) {
+    // Re-run sim with existing throughput data — no server call
+    runSimulation();
+  }
+}
+
+// ─── Run Monte Carlo simulation ───────────────────────────────────────────────
+function runSimulation() {
+  if (!throughputData || !throughputData.buckets) return;
+
+  const prefs      = getPrefs();
+  const intervalDays = prefs.interval === 'day' ? 1 : 7;
+  const trials     = Math.max(1, Math.min(100000, parseInt(prefs.trials || '10000', 10)));
+  const samples    = throughputData.buckets.map(b => b.count);
+  const itemCount  = Math.max(1, Math.min(1000, parseInt(document.getElementById('fcItems').value || '20', 10)));
+  const deadlineEl = document.getElementById('fcDeadline');
+  const deadlineIso = deadlineEl.value || null;
+  const startIso   = todayIso();
+
+  // Low-confidence warning
+  const nonZeroBuckets = samples.filter(s => s > 0).length;
+  const lowConf        = nonZeroBuckets < 6;
+  const lcEl           = document.getElementById('fcLowConf');
+  const lcMsg          = document.getElementById('fcLowConfMsg');
+  if (nonZeroBuckets === 0) {
+    lcEl.classList.add('on');
+    lcMsg.textContent = 'No completed items found in the history window. Widen the window or check your Done States setting.';
+    document.getElementById('howLongCards').innerHTML =
+      '<div class="fc-waiting"><div class="icon">🚫</div><p>No history data — cannot forecast.</p></div>';
+    return;
+  }
+  if (lowConf) {
+    lcEl.classList.add('on');
+    lcMsg.textContent =
+      `Only ${nonZeroBuckets} interval(s) with completed items — forecast shown but low confidence. ` +
+      'Consider widening the history window.';
+  } else {
+    lcEl.classList.remove('on');
+  }
+
+  // Update label
+  document.getElementById('fcItemsLabel').textContent = itemCount;
+
+  // ── How Long ──
+  const howLong = mcForecastHowLong(samples, itemCount, trials);
+  if (!howLong) {
+    document.getElementById('howLongCards').innerHTML =
+      '<div class="fc-waiting"><div class="icon">🚫</div><p>Throughput is all zeros — cannot forecast.</p></div>';
+    return;
+  }
+
+  const p50Date = addIntervals(startIso, howLong.p50,  intervalDays);
+  const p70Date = addIntervals(startIso, howLong.p70,  intervalDays);
+  const p85Date = addIntervals(startIso, howLong.p85,  intervalDays);
+  const p95Date = addIntervals(startIso, howLong.p95,  intervalDays);
+  const meanDate= addIntervals(startIso, howLong.mean, intervalDays);
+
+  renderHowLongCards({ p50Date, p70Date, p85Date, p95Date, meanDate });
+  renderCdfChart(howLong.rawIntervals, startIso, intervalDays);
+
+  // ── How Many ──
+  if (deadlineIso && deadlineIso > startIso) {
+    const diffDays  = daysBetweenIso(startIso, deadlineIso);
+    const intervals = Math.max(1, Math.ceil(diffDays / intervalDays));
+    const howMany   = mcForecastHowMany(samples, intervals, trials);
+
+    document.getElementById('fcDeadlineLabel').textContent = fmtDateShort(deadlineIso);
+    document.getElementById('howManySection').style.display = '';
+
+    renderHowManyCards(howMany, itemCount, deadlineIso);
+    renderCountDistChart(howMany.rawCounts, howMany.atLeast85, itemCount);
+
+    lastSimResult = { howLong, howMany };
+  } else {
+    document.getElementById('howManySection').style.display = 'none';
+    lastSimResult = { howLong, howMany: null };
+  }
+}
+
+// ─── Render "How Long" cards ──────────────────────────────────────────────────
+function renderHowLongCards({ p50Date, p70Date, p85Date, p95Date, meanDate }) {
+  const prefs = getPrefs();
+  const today = todayIso();
+
+  function weeksFrom(dateIso) {
+    const days = daysBetweenIso(today, dateIso);
+    const w = (days / 7).toFixed(1);
+    return days + 'd (~' + w + ' wk)';
+  }
+
+  const html = `
+    <div class="fc-conf-cards" style="margin-bottom:20px">
+      <div class="fc-conf-card">
+        <span class="conf-pill conf-50">50%</span>
+        <div class="label">Optimistic</div>
+        <div class="value">${fmtDateShort(p50Date)}</div>
+        <div class="sub">${weeksFrom(p50Date)} from now</div>
+      </div>
+      <div class="fc-conf-card">
+        <span class="conf-pill conf-70">70%</span>
+        <div class="label">Likely</div>
+        <div class="value">${fmtDateShort(p70Date)}</div>
+        <div class="sub">${weeksFrom(p70Date)} from now</div>
+      </div>
+      <div class="fc-conf-card">
+        <span class="conf-pill conf-85">85%</span>
+        <div class="label">Commit date ★</div>
+        <div class="value" style="color:var(--yellow)">${fmtDateShort(p85Date)}</div>
+        <div class="sub">${weeksFrom(p85Date)} from now · use for external commitments</div>
+      </div>
+      <div class="fc-conf-card">
+        <span class="conf-pill conf-95">95%</span>
+        <div class="label">Safe date</div>
+        <div class="value">${fmtDateShort(p95Date)}</div>
+        <div class="sub">${weeksFrom(p95Date)} from now · very conservative</div>
+      </div>
+    </div>`;
+  document.getElementById('howLongCards').innerHTML = html;
+}
+
+// ─── CDF Chart (how-long distribution) ───────────────────────────────────────
+function renderCdfChart(rawIntervals, startIso, intervalDays) {
+  // Build a cumulative distribution from rawIntervals (sorted ascending Int counts)
+  const maxI     = rawIntervals[rawIntervals.length - 1];
+  const n        = rawIntervals.length;
+  const labels   = [];
+  const cdfData  = [];
+
+  // Build CDF points at each unique interval count
+  let ptr = 0;
+  for (let i = 1; i <= Math.min(maxI, 200); i++) {
+    while (ptr < n && rawIntervals[ptr] <= i) ptr++;
+    const dateIso = addIntervals(startIso, i, intervalDays);
+    labels.push(dateIso);
+    cdfData.push(parseFloat(((ptr / n) * 100).toFixed(1)));
+    if (cdfData[cdfData.length - 1] >= 99.5) break;
+  }
+
+  // Percentile x-positions for annotation markers via point datasets
+  const today = startIso;
+  function pctLabel(p, dateIso, color) {
+    return {
+      type: 'line',
+      label: p + '% by ' + fmtDateShort(dateIso),
+      data: labels.map(l => l === dateIso ? p : null),
+      borderColor: color,
+      borderWidth: 2,
+      pointRadius: labels.map(l => l === dateIso ? 6 : 0),
+      showLine: false,
+      fill: false,
+    };
+  }
+
+  if (cdfChart) {
+    cdfChart.data.labels             = labels;
+    cdfChart.data.datasets[0].data   = cdfData;
+    cdfChart.update();
+    return;
+  }
+
+  cdfChart = new Chart(document.getElementById('cdfChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label:        '% simulations done',
+        data:         cdfData,
+        borderColor:  '#0078d4',
+        borderWidth:  2,
+        fill:         true,
+        backgroundColor: 'rgba(0,120,212,0.08)',
+        pointRadius:  0,
+        tension:      0.3,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => fmtDateShort(ctx[0].label),
+            label: ctx => ` ${ctx.raw}% of simulations done by this date`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true, max: 100,
+          ticks: { callback: v => v + '%', font: { size: 11 } },
+          grid: { color: '#f3f4f6' },
+        },
+        x: {
+          ticks: {
+            maxTicksLimit: 10,
+            font: { size: 10 },
+            maxRotation: 45,
+          },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+}
+
+// ─── How Many cards ───────────────────────────────────────────────────────────
+function renderHowManyCards(howMany, itemCount, deadlineIso) {
+  // Cut-line card
+  const cutLine    = howMany.atLeast85;
+  const cutLineEl  = document.getElementById('fcCutlineCard');
+  cutLineEl.style.display = '';
+  cutLineEl.innerHTML = `
+    <div class="big">Commit to ${cutLine} of ${itemCount} items</div>
+    <p>
+      <strong>85% confident</strong> of finishing at least <strong>${cutLine}</strong> tickets
+      by <strong>${fmtDateShort(deadlineIso)}</strong>.
+      Rank tickets by urgency / cost-of-delay and formally commit to the top ${cutLine}.
+      Treat the remaining ${Math.max(0, itemCount - cutLine)} as stretch — don't let them slip silently.
+    </p>`;
+
+  // Confidence cards
+  const cards = [
+    { conf: '50%', cls: 'conf-50', label: 'Optimistic',     val: howMany.atLeast50 },
+    { conf: '70%', cls: 'conf-70', label: 'Likely',          val: howMany.atLeast70 },
+    { conf: '85%', cls: 'conf-85', label: 'Commit line ★',  val: howMany.atLeast85 },
+    { conf: '95%', cls: 'conf-95', label: 'Conservative',   val: howMany.atLeast95 },
+  ];
+  document.getElementById('howManyCards').innerHTML = cards.map(c => `
+    <div class="fc-conf-card">
+      <span class="conf-pill ${c.cls}">${c.conf}</span>
+      <div class="label">${c.label}</div>
+      <div class="value" style="${c.cls === 'conf-85' ? 'color:var(--yellow)' : ''}">${c.val} items</div>
+      <div class="sub">of ${itemCount} total — ${c.conf} confident of at least this many</div>
+    </div>`).join('');
+}
+
+// ─── Count distribution chart (how-many) ─────────────────────────────────────
+function renderCountDistChart(rawCounts, cutLine, itemCount) {
+  // Bucket into groups
+  const minVal   = rawCounts[0];
+  const maxVal   = rawCounts[rawCounts.length - 1];
+  const range    = Math.max(1, maxVal - minVal);
+  const numBins  = Math.min(30, Math.max(5, range));
+  const binSize  = Math.ceil(range / numBins);
+
+  const bins  = [];
+  const cnts  = [];
+  for (let b = minVal; b <= maxVal; b += binSize) {
+    bins.push(b);
+    cnts.push(0);
+  }
+  for (const v of rawCounts) {
+    const idx = Math.min(Math.floor((v - minVal) / binSize), bins.length - 1);
+    cnts[idx]++;
+  }
+  const total  = rawCounts.length;
+  const pcts   = cnts.map(c => parseFloat((c / total * 100).toFixed(1)));
+  const labels = bins.map(b => String(b));
+
+  const colors = bins.map(b => b >= cutLine ? 'rgba(0,120,212,0.55)' : 'rgba(168,0,0,0.3)');
+
+  if (countDistChart) {
+    countDistChart.data.labels                       = labels;
+    countDistChart.data.datasets[0].data             = pcts;
+    countDistChart.data.datasets[0].backgroundColor  = colors;
+    countDistChart.update();
+    return;
+  }
+
+  countDistChart = new Chart(document.getElementById('countDistChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: '% of simulations',
+        data:  pcts,
+        backgroundColor: colors,
+        borderRadius: 3,
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => ctx[0].label + ' items completed',
+            label: ctx => ` ${ctx.raw}% of simulations`,
+          },
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => v + '%', font: { size: 11 } },
+          grid: { color: '#f3f4f6' },
+        },
+        x: {
+          title: { display: true, text: 'Items completed by deadline', font: { size: 11 } },
+          ticks: { font: { size: 10 } },
+          grid: { display: false },
+        },
+      },
+    },
+  });
+}
+
+// ─── Cycle-time chart ─────────────────────────────────────────────────────────
+function renderCycleTimeChart() {
+  const waiting  = document.getElementById('ctWaiting');
+  const chartWrap= document.getElementById('ctChartWrap');
+  const statsEl  = document.getElementById('ctStats');
+
+  if (!cycleTimeData || cycleTimeData.total === 0) {
+    waiting.innerHTML = '<div class="icon">📭</div><p>No cycle-time data with ActivatedDate in this window.</p>';
+    return;
+  }
+
+  waiting.style.display = 'none';
+  chartWrap.style.display = '';
+  statsEl.style.display   = '';
+
+  const prefs = getPrefs();
+  document.getElementById('ctSubhead').textContent =
+    `(${cycleTimeData.total} items · last ${prefs.days} days · start ≈ ActivatedDate)`;
+
+  document.getElementById('ctP50Label').textContent = 'p50 = ' + cycleTimeData.p50 + 'd';
+  document.getElementById('ctP85Label').textContent = 'p85 = ' + cycleTimeData.p85 + 'd';
+  document.getElementById('ctP95Label').textContent = 'p95 = ' + cycleTimeData.p95 + 'd';
+  document.getElementById('ctAvgLabel').textContent = 'avg = ' + cycleTimeData.avgDays + 'd';
+
+  // Histogram buckets
+  const bandDefs = [
+    { label: '1d',   max: 1 },
+    { label: '2–3d', max: 3 },
+    { label: '4–7d', max: 7 },
+    { label: '8–14d',max: 14 },
+    { label: '15–30d',max: 30 },
+    { label: '31+d', max: Infinity },
+  ];
+  const counts = new Array(bandDefs.length).fill(0);
+  for (const item of cycleTimeData.items) {
+    const idx = bandDefs.findIndex(b => item.cycleDays <= b.max);
+    if (idx >= 0) counts[idx]++;
+  }
+
+  const p85 = cycleTimeData.p85 || 0;
+  const colors = bandDefs.map((b, i) => {
+    // Highlight buckets in the long tail (beyond p85)
+    const bMin = i === 0 ? 0 : bandDefs[i - 1].max;
+    return bMin >= p85 ? 'rgba(168,0,0,0.5)' : 'rgba(0,120,212,0.4)';
+  });
+
+  const labels = bandDefs.map(b => b.label);
+
+  if (ctChartInst) {
+    ctChartInst.data.labels                       = labels;
+    ctChartInst.data.datasets[0].data             = counts;
+    ctChartInst.data.datasets[0].backgroundColor  = colors;
+    ctChartInst.update();
+    return;
+  }
+
+  ctChartInst = new Chart(document.getElementById('ctChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Items',
+        data:  counts,
+        backgroundColor: colors,
+        borderRadius: 4,
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: ctx => ctx[0].label + ' cycle time',
+            label: ctx => {
+              const bMin = ctx.dataIndex === 0 ? 0 : bandDefs[ctx.dataIndex - 1].max;
+              const tag  = bMin >= p85 ? ' ⚠ long tail — consider slicing' : '';
+              return ` ${ctx.raw} item${ctx.raw !== 1 ? 's' : ''}${tag}`;
+            },
+          },
+        },
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: '#f3f4f6' } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } },
+      },
+    },
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(async function init() {
+  loadPrefsIntoForm();
+
+  // Set deadline min to tomorrow
+  const dl = document.getElementById('fcDeadline');
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  dl.min = tomorrow.toISOString().slice(0, 10);
+
+  const cfg = await loadServerConfig();
+  if (cfg) {
+    window._projectUrl = cfg.projectUrl;
+    loadData();
+  } else {
+    showError(
+      'Cannot reach the local proxy server. ' +
+      'Make sure you ran "npm install && npm start" in the project folder.'
+    );
+  }
+})();
+</script>
+</body>
+</html>
