@@ -112,9 +112,96 @@
       padding: 6px 0 0; text-align: center;
     }
 
+    /* ── Outlier Insights panel ──────────────────────────────────────────────── */
+    .outlier-cards { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+    .outlier-card {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius);
+      border-left: 4px solid;
+      background: #fff;
+    }
+    .outlier-card.high { border-color: var(--orange); background: var(--orange-bg); }
+    .outlier-card.low  { border-color: var(--yellow); background: var(--yellow-bg); }
+    .outlier-card .oc-badge {
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+    }
+    .outlier-card.high .oc-badge { background: var(--orange); color: #fff; }
+    .outlier-card.low  .oc-badge { background: var(--yellow); color: #fff; }
+    .outlier-card .oc-week  { font-size: 12px; font-weight: 700; color: var(--gray-800); }
+    .outlier-card .oc-count { font-size: 11px; color: var(--gray-600); margin-top: 1px; }
+    .outlier-card .oc-headline { font-size: 12px; color: var(--gray-800); margin-top: 4px; line-height: 1.5; }
+    .outlier-card .oc-detail-btn {
+      margin-top: 6px; font-size: 11px; cursor: pointer;
+      color: var(--blue); background: none; border: none; padding: 0; text-decoration: underline;
+    }
+    .outlier-empty {
+      padding: 14px 16px; font-size: 13px; color: var(--gray-600);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .outlier-limitations {
+      font-size: 11px; color: var(--gray-600);
+      padding: 8px 16px; border-top: 1px solid var(--gray-100);
+      font-style: italic;
+    }
+
+    /* ── Drill-down panel ─────────────────────────────────────────────────── */
+    .drill-header { font-size: 14px; font-weight: 700; }
+    .drill-meta   { font-size: 12px; color: var(--gray-600); margin-top: 3px; }
+    .drill-section { margin-top: 14px; }
+    .drill-section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .04em; color: var(--gray-600); margin-bottom: 6px;
+    }
+    .drill-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .drill-stat-box {
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 10px 12px;
+    }
+    .drill-stat-box .dsb-label { font-size: 11px; color: var(--gray-600); }
+    .drill-stat-box .dsb-value { font-size: 18px; font-weight: 700; color: var(--gray-800); margin-top: 2px; }
+    .drill-stat-box .dsb-sub   { font-size: 11px; color: var(--gray-600); }
+    .drill-reasons { display: flex; flex-direction: column; gap: 6px; }
+    .drill-reason  {
+      font-size: 12px; padding: 8px 10px; border-radius: var(--radius);
+      background: var(--gray-50); border: 1px solid var(--gray-200);
+      line-height: 1.5;
+    }
+    .drill-reason .dr-code {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 1px 6px; border-radius: 8px; margin-right: 6px;
+      background: var(--blue-light); color: var(--blue-dark);
+    }
+    .drill-items-table {
+      width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px;
+    }
+    .drill-items-table th {
+      background: var(--gray-50); border-bottom: 2px solid var(--gray-200);
+      text-align: left; padding: 5px 8px; font-size: 11px;
+      text-transform: uppercase; letter-spacing: .03em; color: var(--gray-600);
+    }
+    .drill-items-table td {
+      padding: 5px 8px; border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-800);
+    }
+    .drill-items-table tr:hover td { background: var(--gray-50); }
+    .drill-items-table a { color: var(--blue); text-decoration: none; }
+    .drill-items-table a:hover { text-decoration: underline; }
+    .pill-type {
+      display: inline-block; font-size: 10px; padding: 1px 7px;
+      border-radius: 10px; background: var(--blue-light); color: var(--blue-dark); font-weight: 600;
+    }
+    .pill-type.bug  { background: var(--orange-bg); color: var(--orange); }
+    .type-bar {
+      display: inline-block; height: 10px; border-radius: 2px; margin-right: 3px;
+      vertical-align: middle;
+    }
+
     @media (max-width: 900px) {
       .fc-conf-cards { grid-template-columns: repeat(2, 1fr); }
       .fc-inputs { grid-template-columns: 1fr 1fr; }
+      .drill-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
       .fc-conf-cards { grid-template-columns: 1fr; }
@@ -215,6 +302,15 @@
         </select>
         <small>More trials = smoother percentile curves, slower browser</small>
       </div>
+      <div class="field">
+        <label>Outlier Sensitivity</label>
+        <select id="cfgOutlierSensitivity">
+          <option value="1.5" selected>Standard (1.5× IQR)</option>
+          <option value="1.0">Strict (1.0× IQR — flags more)</option>
+          <option value="3.0">Loose (3.0× IQR — flags fewer)</option>
+        </select>
+        <small>IQR fence multiplier for outlier detection</small>
+      </div>
     </div>
     <div class="settings-footer" id="settingsFooter" style="display:none">
       <button class="btn btn-save" onclick="savePrefs()">💾 Save &amp; Refresh</button>
@@ -288,6 +384,28 @@
     </div>
   </div>
 
+  <!-- OUTLIER INSIGHTS PANEL -->
+  <div class="panel" id="outlierInsightsPanel" style="margin-bottom:20px;display:none">
+    <div class="panel-header">
+      🔍 Outlier Insights
+      <span id="outlierInsightsSubhead" style="font-weight:400;font-size:12px;color:var(--gray-600)"></span>
+    </div>
+    <div class="panel-body" id="outlierInsightsBody"></div>
+    <div class="outlier-limitations">
+      ⓘ Detection uses Tukey IQR fence (or MAD for small samples). Heuristic labels are likely explanations, not certainties.
+      This tool cannot see team holidays or PTO — a quiet holiday week looks identical to a capacity problem.
+    </div>
+  </div>
+
+  <!-- DRILL-DOWN PANEL (shown on bar click) -->
+  <div class="panel" id="drillDownPanel" style="margin-bottom:20px;display:none">
+    <div class="panel-header" id="drillDownHeader">Week Detail</div>
+    <div class="panel-body" id="drillDownBody" style="padding:16px"></div>
+    <div style="padding:8px 16px;border-top:1px solid var(--gray-100)">
+      <button class="btn btn-outline" onclick="closeDrillDown()">&#x2715; Close detail</button>
+    </div>
+  </div>
+
   <!-- HOW LONG FORECAST -->
   <div id="howLongSection">
     <div class="panel-header" style="background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);padding:10px 16px;margin-bottom:12px;box-shadow:var(--shadow)">
@@ -354,8 +472,8 @@
   </div>
 
   <div class="footer">
-    Delivery Forecast · Monte Carlo over historical throughput · No secrets in this page ·
-    Cycle-time start ≈ ActivatedDate (D1 method)
+    Delivery Forecast · Monte Carlo over historical throughput · Outlier detection via IQR/MAD ·
+    No secrets in this page · Cycle-time start ≈ ActivatedDate
   </div>
 </div>
 
@@ -440,6 +558,258 @@ function mcForecastHowMany(samples, intervals, trials) {
   };
 }
 
+// ─── Outliers module (inlined from lib/outliers.js) ──────────────────────────
+// detectOutliers, computeBaseline, summarizeBucket, explainOutlier
+// See lib/outliers.js for full documentation and unit tests.
+
+function olMedian(sortedArr) {
+  const n = sortedArr.length;
+  if (!n) return 0;
+  const mid = Math.floor(n / 2);
+  return n % 2 === 0 ? (sortedArr[mid - 1] + sortedArr[mid]) / 2 : sortedArr[mid];
+}
+function olPct(sortedArr, p) {
+  if (!sortedArr.length) return 0;
+  if (p <= 0)   return sortedArr[0];
+  if (p >= 100) return sortedArr[sortedArr.length - 1];
+  return sortedArr[Math.min(Math.floor((p / 100) * sortedArr.length), sortedArr.length - 1)];
+}
+
+function olDetectOutliers(counts, multiplier) {
+  if (multiplier == null) multiplier = 1.5;
+  const n = counts ? counts.length : 0;
+  if (n < 4) {
+    const sorted = n ? [...counts].sort((a, b) => a - b) : [];
+    return {
+      median: n ? olMedian(sorted) : 0,
+      q1: null, q3: null, iqr: null,
+      lowerFence: null, upperFence: null,
+      method: 'disabled',
+      flags: counts ? counts.map(() => null) : [],
+      message: 'Not enough history to flag outliers (need at least 4 data points).',
+    };
+  }
+  const sorted = [...counts].sort((a, b) => a - b);
+  const med    = olMedian(sorted);
+  if (n >= 7) {
+    const q1  = olPct(sorted, 25);
+    const q3  = olPct(sorted, 75);
+    const iqr = q3 - q1;
+    if (iqr > 0) {
+      const lower = q1 - multiplier * iqr;
+      const upper = q3 + multiplier * iqr;
+      return {
+        median: med, q1, q3, iqr,
+        lowerFence: lower, upperFence: upper,
+        method: 'iqr',
+        flags: counts.map(c => c > upper ? 'high' : c < lower ? 'low' : null),
+      };
+    }
+  }
+  const deviations    = sorted.map(c => Math.abs(c - med)).sort((a, b) => a - b);
+  const mad           = olMedian(deviations);
+  const modZThreshold = 3.5 * (multiplier / 1.5);
+  if (mad === 0) {
+    const nonZeroDevs = deviations.filter(d => d > 0);
+    if (!nonZeroDevs.length) {
+      return {
+        median: med, q1: null, q3: null, iqr: null,
+        lowerFence: null, upperFence: null,
+        method: 'mad',
+        flags: counts.map(() => null),
+      };
+    }
+    const effectiveMad = nonZeroDevs[0];
+    const spreadNZ = modZThreshold * effectiveMad / 0.6745;
+    const lowerNZ  = med - spreadNZ;
+    const upperNZ  = med + spreadNZ;
+    return {
+      median: med, q1: null, q3: null, iqr: null,
+      lowerFence: lowerNZ, upperFence: upperNZ,
+      method: 'mad',
+      flags: counts.map(c => c > upperNZ ? 'high' : c < lowerNZ ? 'low' : null),
+    };
+  }
+  const spread = modZThreshold * mad / 0.6745;
+  const lower  = med - spread;
+  const upper  = med + spread;
+  return {
+    median: med, q1: null, q3: null, iqr: null,
+    lowerFence: lower, upperFence: upper,
+    method: 'mad',
+    flags: counts.map(c => c > upper ? 'high' : c < lower ? 'low' : null),
+  };
+}
+
+function olComputeBaseline(buckets) {
+  if (!buckets || !buckets.length) {
+    return { medianCount: 0, medianCycleDays: null, typeBaseline: [], medianContributors: 1, avgPointsBaseline: null };
+  }
+  const sortedCounts = buckets.map(b => b.count).sort((a, b) => a - b);
+  const medianCount  = olMedian(sortedCounts);
+  const allItems     = buckets.flatMap(b => b.items || []);
+  const cycleTimes   = allItems
+    .filter(i => i.cycleDays != null && i.cycleDays >= 0)
+    .map(i => i.cycleDays).sort((a, b) => a - b);
+  const medianCycleDays = cycleTimes.length ? olMedian(cycleTimes) : null;
+  const typeCounts = {};
+  for (const item of allItems) {
+    const t = item.type || 'Unknown';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  }
+  const total = allItems.length;
+  const typeBaseline = Object.entries(typeCounts).map(([type, count]) => ({
+    type, count, fraction: total > 0 ? count / total : 0,
+  }));
+  const contribPerBucket = buckets
+    .filter(b => (b.items || []).length > 0)
+    .map(b => new Set((b.items || []).map(i => i.assignedTo).filter(Boolean)).size)
+    .sort((a, b) => a - b);
+  const medianContributors = contribPerBucket.length ? olMedian(contribPerBucket) : 1;
+  const withPoints = allItems.filter(i => i.storyPoints != null);
+  const avgPointsBaseline = (total > 0 && withPoints.length / total > 0.5)
+    ? withPoints.reduce((s, i) => s + i.storyPoints, 0) / withPoints.length
+    : null;
+  return { medianCount, medianCycleDays, typeBaseline, medianContributors, avgPointsBaseline };
+}
+
+function olSummarizeBucket(bucket, baseline) {
+  const items = bucket.items || [];
+  const n     = items.length;
+  // C1: Batch-close clustering
+  const dayMap = {};
+  for (const item of items) {
+    const day = item.closedDate ? item.closedDate.slice(0, 10) : 'unknown';
+    dayMap[day] = (dayMap[day] || 0) + 1;
+  }
+  const dayEntries        = Object.entries(dayMap).sort((a, b) => b[1] - a[1]);
+  const maxCloseDay       = dayEntries[0];
+  const batchClusterCount = maxCloseDay ? maxCloseDay[1] : 0;
+  const batchClusterDay   = maxCloseDay ? maxCloseDay[0] : null;
+  const batchClusterRatio = n > 0 ? batchClusterCount / n : 0;
+  // C2: Aged-WIP flush
+  const withCycleDays = items.filter(i => i.cycleDays != null && i.cycleDays >= 0);
+  const agedThreshold = baseline.medianCycleDays != null ? baseline.medianCycleDays * 2 : null;
+  const agedItemsList = agedThreshold != null ? withCycleDays.filter(i => i.cycleDays > agedThreshold) : [];
+  const agedWipRatio  = withCycleDays.length > 0 ? agedItemsList.length / withCycleDays.length : 0;
+  // C3: Grain leakage
+  const grainLeakItems = items.filter(i => /epic|feature/i.test(i.type || ''));
+  const grainLeakCount = grainLeakItems.length;
+  // C4: Type mix
+  const typeCounts = {};
+  for (const item of items) {
+    const t = item.type || 'Unknown';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  }
+  const typeMix = Object.entries(typeCounts).map(([type, count]) => ({
+    type, count, fraction: n > 0 ? count / n : 0,
+  }));
+  // C5: Size mix
+  const withPoints = items.filter(i => i.storyPoints != null);
+  const hasPoints  = n > 0 && withPoints.length / n > 0.5;
+  let sizeMix;
+  if (hasPoints) {
+    const avg = withPoints.reduce((s, i) => s + i.storyPoints, 0) / withPoints.length;
+    sizeMix = { source: 'storyPoints', avg: parseFloat(avg.toFixed(1)), populated: withPoints.length };
+  } else {
+    const avg = withCycleDays.length > 0
+      ? withCycleDays.reduce((s, i) => s + i.cycleDays, 0) / withCycleDays.length
+      : null;
+    sizeMix = { source: 'cycleDays', avg: avg != null ? parseFloat(avg.toFixed(1)) : null, populated: withCycleDays.length };
+  }
+  // C6: Contributors / areas
+  const contributors    = new Set(items.map(i => i.assignedTo).filter(Boolean));
+  const areas           = new Set(items.map(i => i.area).filter(Boolean));
+  return {
+    itemCount: n,
+    typeMix, sizeMix,
+    contributorCount: contributors.size,
+    areaCount: areas.size,
+    batchClusterCount, batchClusterDay, batchClusterRatio,
+    agedWipRatio, agedItems: agedItemsList.length,
+    grainLeakCount,
+  };
+}
+
+function olExplainOutlier(bucket, summary, baseline, flag) {
+  const n      = summary.itemCount;
+  const median = baseline.medianCount || 1;
+  const ratio  = n > 0 ? (n / median).toFixed(1) : '0';
+  const reasons = [];
+  // Tier 1
+  if (summary.grainLeakCount > 0) {
+    reasons.push({
+      code: 'grain-leak',
+      detail: summary.grainLeakCount + ' item' + (summary.grainLeakCount > 1 ? 's are' : ' is') +
+              ' of type Epic/Feature — these are not comparable to Stories/Bugs and inflate the count.',
+    });
+  }
+  if (n >= 3 && summary.batchClusterRatio >= 0.5) {
+    const day = summary.batchClusterDay || 'one day';
+    reasons.push({
+      code: 'batch-close',
+      detail: summary.batchClusterCount + ' of ' + n + ' item' + (n !== 1 ? 's' : '') +
+              ' closed on ' + day + ' — likely a batch status update rather than steady-flow delivery.',
+    });
+  }
+  if (summary.agedWipRatio >= 0.5 && summary.agedItems >= 2) {
+    reasons.push({
+      code: 'aged-wip',
+      detail: summary.agedItems + ' of ' + n + ' item' + (summary.agedItems !== 1 ? 's' : '') +
+              ' had unusually long cycle times (>2x the median of ' +
+              (baseline.medianCycleDays != null ? baseline.medianCycleDays + 'd' : 'normal') +
+              ') — likely an aged-WIP backlog flush.',
+    });
+  }
+  // Tier 2
+  if (flag === 'low' && baseline.medianContributors > 1 &&
+      summary.contributorCount < baseline.medianContributors * 0.6) {
+    reasons.push({
+      code: 'contributor-dip',
+      detail: 'Only ' + summary.contributorCount + ' contributor' + (summary.contributorCount !== 1 ? 's' : '') +
+              ' active vs. the usual ~' + Math.round(baseline.medianContributors) +
+              ' — capacity may have been reduced (holidays, PTO, or competing priorities).',
+    });
+  }
+  const bucketBugFrac   = (summary.typeMix.find(t => /bug/i.test(t.type)) || { fraction: 0 }).fraction;
+  const baselineBugFrac = (baseline.typeBaseline.find(t => /bug/i.test(t.type)) || { fraction: 0 }).fraction;
+  if (Math.abs(bucketBugFrac - baselineBugFrac) > 0.3) {
+    const dir = bucketBugFrac > baselineBugFrac ? 'higher' : 'lower';
+    reasons.push({
+      code: 'type-mix',
+      detail: 'Bug completion rate is ' + dir + ' than usual (' +
+              Math.round(bucketBugFrac * 100) + '% vs. ' +
+              Math.round(baselineBugFrac * 100) + '% baseline).',
+    });
+  }
+  if (summary.sizeMix.avg != null && baseline.medianCycleDays != null &&
+      summary.sizeMix.source === 'cycleDays') {
+    const avgCT = summary.sizeMix.avg;
+    if ((flag === 'high' && avgCT < baseline.medianCycleDays * 0.5) ||
+        (flag === 'low'  && avgCT > baseline.medianCycleDays * 2)) {
+      const dir = avgCT < baseline.medianCycleDays ? 'shorter' : 'longer';
+      reasons.push({
+        code: 'size-shift',
+        detail: 'Average cycle time this week (' + avgCT + 'd) is ' + dir +
+                ' than the overall median (' + baseline.medianCycleDays + 'd).',
+      });
+    }
+  }
+  let headline;
+  if (reasons.length === 0) {
+    if (flag === 'high') {
+      headline = n + ' items completed (' + ratio + 'x the median). No specific pattern detected; ' +
+                 'check team calendar for holidays, PTO, or sprint-end effects.';
+    } else {
+      headline = 'Only ' + n + ' items completed. No specific pattern detected; ' +
+                 'check for holidays, PTO, or carry-over from a prior week.';
+    }
+  } else {
+    headline = reasons[0].detail;
+  }
+  return { headline, reasons };
+}
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let throughputData  = null; // from /api/throughput
 let cycleTimeData   = null; // from /api/wi-cycle-time
@@ -453,29 +823,32 @@ let ctChartInst     = null;
 // ─── Preferences (fc_* to avoid collisions with wip_* / pr_*) ────────────────
 function getPrefs() {
   return {
-    doneStates: localStorage.getItem('fc_doneStates') || 'Closed,Done,Resolved',
-    types:      localStorage.getItem('fc_types')      || 'User Story,Bug',
-    days:       localStorage.getItem('fc_days')       || '84',
-    interval:   localStorage.getItem('fc_interval')   || 'week',
-    trials:     localStorage.getItem('fc_trials')     || '10000',
+    doneStates:         localStorage.getItem('fc_doneStates')         || 'Closed,Done,Resolved',
+    types:              localStorage.getItem('fc_types')              || 'User Story,Bug',
+    days:               localStorage.getItem('fc_days')               || '84',
+    interval:           localStorage.getItem('fc_interval')           || 'week',
+    trials:             localStorage.getItem('fc_trials')             || '10000',
+    outlierSensitivity: localStorage.getItem('fc_outlierSensitivity') || '1.5',
   };
 }
 
 function loadPrefsIntoForm() {
   const p = getPrefs();
-  document.getElementById('cfgDoneStates').value = p.doneStates;
-  document.getElementById('cfgTypes').value      = p.types;
-  document.getElementById('cfgDays').value       = p.days;
-  document.getElementById('cfgInterval').value   = p.interval;
-  document.getElementById('cfgTrials').value     = p.trials;
+  document.getElementById('cfgDoneStates').value          = p.doneStates;
+  document.getElementById('cfgTypes').value               = p.types;
+  document.getElementById('cfgDays').value                = p.days;
+  document.getElementById('cfgInterval').value            = p.interval;
+  document.getElementById('cfgTrials').value              = p.trials;
+  document.getElementById('cfgOutlierSensitivity').value  = p.outlierSensitivity;
 }
 
 function savePrefs() {
-  localStorage.setItem('fc_doneStates', document.getElementById('cfgDoneStates').value.trim());
-  localStorage.setItem('fc_types',      document.getElementById('cfgTypes').value.trim());
-  localStorage.setItem('fc_days',       document.getElementById('cfgDays').value);
-  localStorage.setItem('fc_interval',   document.getElementById('cfgInterval').value);
-  localStorage.setItem('fc_trials',     document.getElementById('cfgTrials').value);
+  localStorage.setItem('fc_doneStates',         document.getElementById('cfgDoneStates').value.trim());
+  localStorage.setItem('fc_types',              document.getElementById('cfgTypes').value.trim());
+  localStorage.setItem('fc_days',               document.getElementById('cfgDays').value);
+  localStorage.setItem('fc_interval',           document.getElementById('cfgInterval').value);
+  localStorage.setItem('fc_trials',             document.getElementById('cfgTrials').value);
+  localStorage.setItem('fc_outlierSensitivity', document.getElementById('cfgOutlierSensitivity').value);
   const msg = document.getElementById('settingsMsg');
   msg.textContent = '✅ Saved';
   setTimeout(() => { msg.textContent = ''; }, 2500);
@@ -533,6 +906,7 @@ async function loadData() {
 
     renderThroughputCards();
     renderThroughputChart();
+    renderOutlierInsights();
     renderCycleTimeChart();
     setStatusDot('ok');
 
@@ -576,61 +950,123 @@ function renderThroughputCards() {
 // ─── Throughput chart ─────────────────────────────────────────────────────────
 function renderThroughputChart() {
   if (!throughputData || !throughputData.buckets.length) return;
+
+  // Always destroy and recreate so bar colors + fence update cleanly on refresh
+  if (throughputChart) { throughputChart.destroy(); throughputChart = null; }
+
   const d       = throughputData;
   const labels  = d.buckets.map(b => b.start);
   const counts  = d.buckets.map(b => b.count);
   const mean    = d.perInterval.mean;
   const meanArr = counts.map(() => mean);
 
-  const MEAN_COLOR = '#0078d4';
+  // ── Outlier detection ──────────────────────────────────────────────────────
+  const prefs       = getPrefs();
+  const sensitivity = parseFloat(prefs.outlierSensitivity || '1.5');
+  const olResult    = olDetectOutliers(counts, sensitivity);
 
-  if (throughputChart) {
-    throughputChart.data.labels                = labels;
-    throughputChart.data.datasets[0].data      = counts;
-    throughputChart.data.datasets[1].data      = meanArr;
-    throughputChart.update();
-    return;
+  // Per-bar colors: high = orange, low = yellow, normal = blue
+  const barBg = counts.map((_, i) => {
+    if (olResult.flags[i] === 'high') return 'rgba(216,59,1,0.35)';
+    if (olResult.flags[i] === 'low')  return 'rgba(193,156,0,0.35)';
+    return 'rgba(0,120,212,0.2)';
+  });
+  const barBorder = counts.map((_, i) => {
+    if (olResult.flags[i] === 'high') return 'rgba(216,59,1,0.9)';
+    if (olResult.flags[i] === 'low')  return 'rgba(193,156,0,0.9)';
+    return 'rgba(0,120,212,0.8)';
+  });
+
+  // IQR / MAD fence band (clamp lower at 0)
+  const hasFence = olResult.upperFence != null && olResult.lowerFence != null;
+  const upperFenceArr = hasFence ? counts.map(() => olResult.upperFence) : null;
+  const lowerFenceArr = hasFence ? counts.map(() => Math.max(0, olResult.lowerFence)) : null;
+
+  const datasets = [
+    {
+      label: 'Completed',
+      data:  counts,
+      backgroundColor: barBg,
+      borderColor:     barBorder,
+      borderWidth: 1,
+      borderRadius: 3,
+      order: 3,
+    },
+    {
+      type:        'line',
+      label:       'Mean (' + mean + ')',
+      data:        meanArr,
+      borderColor: '#0078d4',
+      borderWidth: 2,
+      borderDash:  [5, 3],
+      pointRadius: 0,
+      fill:        false,
+      tension:     0,
+      order:       2,
+    },
+  ];
+
+  if (hasFence) {
+    datasets.push(
+      {
+        type:        'line',
+        label:       (olResult.method === 'iqr' ? 'IQR' : 'MAD') + ' upper fence',
+        data:        upperFenceArr,
+        borderColor: 'rgba(255,165,0,0.55)',
+        borderWidth: 1,
+        borderDash:  [4, 4],
+        pointRadius: 0,
+        fill:        false,
+        tension:     0,
+        order:       1,
+      },
+      {
+        type:        'line',
+        label:       (olResult.method === 'iqr' ? 'IQR' : 'MAD') + ' lower fence',
+        data:        lowerFenceArr,
+        borderColor: 'rgba(255,165,0,0.55)',
+        borderWidth: 1,
+        borderDash:  [4, 4],
+        pointRadius: 0,
+        fill:        { target: '-1', above: 'rgba(255,165,0,0.07)', below: 'rgba(255,165,0,0.07)' },
+        tension:     0,
+        order:       1,
+      }
+    );
   }
 
   throughputChart = new Chart(document.getElementById('throughputChart').getContext('2d'), {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Completed',
-          data:  counts,
-          backgroundColor: 'rgba(0,120,212,0.2)',
-          borderColor:     'rgba(0,120,212,0.8)',
-          borderWidth: 1,
-          borderRadius: 3,
-          order: 2,
-        },
-        {
-          type:           'line',
-          label:          'Mean (' + mean + ')',
-          data:           meanArr,
-          borderColor:    MEAN_COLOR,
-          borderWidth:    2,
-          borderDash:     [5, 3],
-          pointRadius:    0,
-          fill:           false,
-          tension:        0,
-          order:          1,
-        },
-      ],
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
+      onClick: (evt, elements) => {
+        if (elements && elements.length && elements[0].datasetIndex === 0) {
+          showDrillDown(elements[0].index);
+        }
+      },
       plugins: {
-        legend: { display: true, position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
+        legend: {
+          display: true, position: 'top',
+          labels: {
+            boxWidth: 14, font: { size: 11 },
+            filter: item => !item.text.includes('fence'), // hide fence entries from legend
+          },
+        },
         tooltip: {
           callbacks: {
             title: ctx => {
               const b = throughputData.buckets[ctx[0].dataIndex];
               return b ? (b.start === b.end ? b.start : b.start + ' → ' + b.end) : ctx[0].label;
             },
-            label: ctx => ` ${ctx.raw} item${ctx.raw !== 1 ? 's' : ''}`,
+            label: ctx => {
+              if (ctx.datasetIndex !== 0) return null; // skip fence tooltips
+              const flag = olResult.flags[ctx.dataIndex];
+              const suffix = flag === 'high' ? ' ▲ outlier (high)' :
+                             flag === 'low'  ? ' ▼ outlier (low)'  : '';
+              return ' ' + ctx.raw + ' item' + (ctx.raw !== 1 ? 's' : '') + suffix +
+                     '  — click for detail';
+            },
           },
         },
       },
@@ -642,9 +1078,220 @@ function renderThroughputChart() {
   });
 
   document.getElementById('fcBaseline').textContent =
-    'Naive baseline: ' + mean + ' items/' +
-    (getPrefs().interval === 'day' ? 'day' : 'week') + ' average. ' +
-    'Monte Carlo range below accounts for variability.';
+    'Naive baseline: ' + mean + ' items/' + (prefs.interval === 'day' ? 'day' : 'week') +
+    ' average. Monte Carlo range below accounts for variability.' +
+    (hasFence ? ' Shaded band = normal range (' + olResult.method.toUpperCase() + ').' : '') +
+    ' Click any bar for detail.';
+
+  // Store outlier result for use by insights panel
+  throughputChart._olResult  = olResult;
+}
+
+// ─── Outlier Insights panel ───────────────────────────────────────────────────
+function renderOutlierInsights() {
+  const panel   = document.getElementById('outlierInsightsPanel');
+  const body    = document.getElementById('outlierInsightsBody');
+  const subhead = document.getElementById('outlierInsightsSubhead');
+
+  if (!throughputData || !throughputData.buckets.length) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  const counts     = throughputData.buckets.map(b => b.count);
+  const prefs      = getPrefs();
+  const sensitivity= parseFloat(prefs.outlierSensitivity || '1.5');
+  const olResult   = olDetectOutliers(counts, sensitivity);
+
+  panel.style.display = '';
+
+  if (olResult.method === 'disabled') {
+    subhead.textContent = '';
+    body.innerHTML = '<div class="outlier-empty"><span>&#x2139;&#xFE0F;</span>' +
+      '<span>' + (olResult.message || 'Not enough data for outlier detection.') + '</span></div>';
+    return;
+  }
+
+  const baseline   = olComputeBaseline(throughputData.buckets);
+  const flagged    = olResult.flags.map((f, i) => f ? i : -1).filter(i => i >= 0);
+
+  const methodLabel = olResult.method === 'iqr'
+    ? 'Tukey IQR (1.5x)'
+    : 'MAD (small sample)';
+  subhead.textContent = '(' + flagged.length + ' outlier' + (flagged.length !== 1 ? 's' : '') +
+    ' detected via ' + methodLabel + ')';
+
+  if (flagged.length === 0) {
+    body.innerHTML = '<div class="outlier-empty"><span>&#x2705;</span>' +
+      '<span>No outlier weeks — throughput is within the normal range for this history window.</span></div>';
+    return;
+  }
+
+  let html = '<div class="outlier-cards">';
+  for (const idx of flagged) {
+    const bucket  = throughputData.buckets[idx];
+    const flag    = olResult.flags[idx];
+    const summary = olSummarizeBucket(bucket, baseline);
+    const explain = olExplainOutlier(bucket, summary, baseline, flag);
+
+    const weekLabel = bucket.start === bucket.end ? bucket.start : bucket.start + ' to ' + bucket.end;
+    const medianStr = olResult.median ? ' (' + (bucket.count / olResult.median).toFixed(1) + 'x median)' : '';
+    const badgeText = flag === 'high' ? '&#x25B2; HIGH' : '&#x25BC; LOW';
+
+    html += '<div class="outlier-card ' + flag + '">' +
+      '<div style="flex-shrink:0"><span class="oc-badge">' + badgeText + '</span></div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div class="oc-week">Week of ' + weekLabel + '</div>' +
+        '<div class="oc-count">' + bucket.count + ' items' + medianStr + '</div>' +
+        '<div class="oc-headline">' + esc(explain.headline) + '</div>' +
+        '<button class="oc-detail-btn" onclick="showDrillDown(' + idx + ')">View detail &rarr;</button>' +
+      '</div>' +
+    '</div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// ─── Drill-down panel ────────────────────────────────────────────────────────
+function showDrillDown(idx) {
+  const bucket = throughputData && throughputData.buckets[idx];
+  if (!bucket) return;
+
+  const panel   = document.getElementById('drillDownPanel');
+  const header  = document.getElementById('drillDownHeader');
+  const body    = document.getElementById('drillDownBody');
+
+  const counts   = throughputData.buckets.map(b => b.count);
+  const prefs    = getPrefs();
+  const sensitivity = parseFloat(prefs.outlierSensitivity || '1.5');
+  const olResult = olDetectOutliers(counts, sensitivity);
+  const baseline = olComputeBaseline(throughputData.buckets);
+  const summary  = olSummarizeBucket(bucket, baseline);
+  const flag     = olResult.flags[idx];
+  const explain  = flag ? olExplainOutlier(bucket, summary, baseline, flag) : { headline: '', reasons: [] };
+
+  const weekLabel = bucket.start === bucket.end ? bucket.start : bucket.start + ' to ' + bucket.end;
+
+  header.innerHTML = '<span class="drill-header">Week of ' + esc(weekLabel) + '</span>' +
+    (flag ? (' &nbsp;<span class="oc-badge ' + flag + '" style="font-size:10px;padding:2px 7px;border-radius:10px;' +
+      'background:' + (flag === 'high' ? 'var(--orange)' : 'var(--yellow)') + ';color:#fff">' +
+      (flag === 'high' ? '&#x25B2; HIGH OUTLIER' : '&#x25BC; LOW OUTLIER') + '</span>') : '') +
+    '<div class="drill-meta">' + bucket.count + ' items completed' +
+    (olResult.median ? ' &nbsp;&middot;&nbsp; median is ' + olResult.median + ' &nbsp;&middot;&nbsp; ' +
+      (bucket.count / olResult.median).toFixed(1) + 'x the median' : '') + '</div>';
+
+  // ── Summary stats ──────────────────────────────────────────────────────────
+  let html = '<div class="drill-grid">';
+
+  html += '<div class="drill-stat-box">' +
+    '<div class="dsb-label">Contributors</div>' +
+    '<div class="dsb-value">' + summary.contributorCount + '</div>' +
+    '<div class="dsb-sub">vs. ~' + Math.round(baseline.medianContributors) + ' median</div>' +
+    '</div>';
+
+  const batchPct = Math.round(summary.batchClusterRatio * 100);
+  html += '<div class="drill-stat-box">' +
+    '<div class="dsb-label">Batch-close concentration</div>' +
+    '<div class="dsb-value">' + batchPct + '%</div>' +
+    '<div class="dsb-sub">' + summary.batchClusterCount + ' item' +
+      (summary.batchClusterCount !== 1 ? 's' : '') + ' on ' + (summary.batchClusterDay || 'same day') +
+    '</div></div>';
+
+  const agedPct = Math.round(summary.agedWipRatio * 100);
+  html += '<div class="drill-stat-box">' +
+    '<div class="dsb-label">Aged-WIP items</div>' +
+    '<div class="dsb-value">' + summary.agedItems + '</div>' +
+    '<div class="dsb-sub">' + agedPct + '% of items with cycle data' +
+    (baseline.medianCycleDays ? ' (threshold: ' + (baseline.medianCycleDays * 2).toFixed(0) + 'd)' : '') +
+    '</div></div>';
+
+  const sizeSrc = summary.sizeMix.source === 'storyPoints' ? 'avg pts' : 'avg cycle';
+  const sizeVal = summary.sizeMix.avg != null ? summary.sizeMix.avg : '—';
+  html += '<div class="drill-stat-box">' +
+    '<div class="dsb-label">Size proxy (' + sizeSrc + ')</div>' +
+    '<div class="dsb-value">' + sizeVal + (summary.sizeMix.source === 'cycleDays' ? 'd' : '') + '</div>' +
+    '<div class="dsb-sub">' + summary.sizeMix.populated + ' item' +
+      (summary.sizeMix.populated !== 1 ? 's' : '') + ' with data</div>' +
+    '</div>';
+
+  html += '</div>'; // end drill-grid
+
+  // ── Reasons ────────────────────────────────────────────────────────────────
+  if (explain.reasons.length > 0) {
+    html += '<div class="drill-section">' +
+      '<div class="drill-section-title">Attribution signals</div>' +
+      '<div class="drill-reasons">';
+    for (const r of explain.reasons) {
+      const codeLabels = {
+        'grain-leak':       'Grain leak',
+        'batch-close':      'Batch close',
+        'aged-wip':         'Aged WIP',
+        'contributor-dip':  'Capacity dip',
+        'type-mix':         'Type mix',
+        'size-shift':       'Size shift',
+      };
+      html += '<div class="drill-reason">' +
+        '<span class="dr-code">' + esc(codeLabels[r.code] || r.code) + '</span>' +
+        esc(r.detail) + '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  // ── Type mix bar ──────────────────────────────────────────────────────────
+  if (summary.typeMix.length > 0) {
+    html += '<div class="drill-section"><div class="drill-section-title">Item-type mix</div><div>';
+    const typeColors = ['#0078d4','#d83b01','#107c10','#c19c00','#a80000','#5c2d91'];
+    summary.typeMix.forEach((tm, i) => {
+      const pct = Math.round(tm.fraction * 100);
+      const col = typeColors[i % typeColors.length];
+      html += '<span style="display:inline-flex;align-items:center;margin-right:12px;margin-bottom:4px;font-size:12px">' +
+        '<span class="type-bar" style="width:' + Math.max(pct, 4) + 'px;background:' + col + ';opacity:.7"></span>' +
+        esc(tm.type) + ': ' + tm.count + ' (' + pct + '%)' +
+        '</span>';
+    });
+    html += '</div></div>';
+  }
+
+  // ── Item list ─────────────────────────────────────────────────────────────
+  const items = bucket.items || [];
+  if (items.length > 0) {
+    const projectUrl = (window._projectUrl || '').replace(/\/$/, '');
+    html += '<div class="drill-section"><div class="drill-section-title">Items in this bucket (' +
+      items.length + ')</div>';
+    html += '<div style="overflow-x:auto"><table class="drill-items-table">' +
+      '<thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Assigned To</th>' +
+      '<th>Cycle</th><th>Closed</th></tr></thead><tbody>';
+    for (const item of items) {
+      const wiUrl = projectUrl
+        ? projectUrl + '/_workitems/edit/' + item.id
+        : '#';
+      const cycleStr = item.cycleDays != null ? item.cycleDays + 'd' : '—';
+      const closedStr = item.closedDate ? item.closedDate.slice(0, 10) : '—';
+      const isBug = /bug/i.test(item.type || '');
+      html += '<tr>' +
+        '<td><a href="' + esc(wiUrl) + '" target="_blank" rel="noopener">' + item.id + '</a></td>' +
+        '<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(item.title) + '">' +
+          esc(item.title) + '</td>' +
+        '<td><span class="pill-type' + (isBug ? ' bug' : '') + '">' + esc(item.type) + '</span></td>' +
+        '<td>' + esc(item.assignedTo || '—') + '</td>' +
+        '<td>' + cycleStr + '</td>' +
+        '<td>' + closedStr + '</td>' +
+        '</tr>';
+    }
+    html += '</tbody></table></div></div>';
+  } else {
+    html += '<div class="drill-section" style="font-size:12px;color:var(--gray-600)">' +
+      'Detailed item data not available (reload or check history window).</div>';
+  }
+
+  body.innerHTML = html;
+  panel.style.display = '';
+  // Scroll panel into view smoothly
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDrillDown() {
+  document.getElementById('drillDownPanel').style.display = 'none';
 }
 
 // ─── Simulation inputs / triggers ────────────────────────────────────────────

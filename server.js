@@ -350,11 +350,12 @@ app.get('/api/pr-cycle-time', async (req, res) => {
     res.json({ items, total: count, avgDays, medianDays, days });
   } catch (err) {
     console.error('[pr-cycle-time] Error:', err.message);
-    res.status(500).json({ error: adoErrorMessage(err, 'PR cycle time') });
+    res.status(500).json({ error: adoErrorMessage(err, 'pr cycle time') });
   }
 });
 
-// GET /api/throughput?days=84&interval=week&states=Closed,Done&types=User+Story,Bug
+// GET /api/throughput?days=84&interval=week&states=Closed,Done&types=User+Story,Bug&detail=1
+// detail=0 returns the lean legacy payload (count only, no items[]) for other consumers.
 app.get('/api/throughput', async (req, res) => {
   let days, interval, states, types;
   try {
@@ -367,6 +368,20 @@ app.get('/api/throughput', async (req, res) => {
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
+
+  // detail=0 opts out of per-item enrichment (lean legacy shape)
+  const wantDetail = req.query.detail !== '0';
+
+  // Fields for enriched vs. lean requests
+  const ENRICHED_FIELDS = [
+    'System.Id', 'System.Title', 'System.WorkItemType',
+    'Microsoft.VSTS.Common.Priority', 'System.AssignedTo',
+    'System.AreaPath', 'System.IterationPath',
+    'Microsoft.VSTS.Common.ActivatedDate',
+    'Microsoft.VSTS.Common.ClosedDate',
+    'Microsoft.VSTS.Scheduling.StoryPoints',
+  ];
+  const LEAN_FIELDS = ['System.Id', 'Microsoft.VSTS.Common.ClosedDate'];
 
   try {
     const since        = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -385,6 +400,7 @@ app.get('/api/throughput', async (req, res) => {
 
     const wu = new URL(ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT) + '/_apis/wit/wiql');
     wu.searchParams.set('api-version', ADO_API_VERSION);
+    wu.searchParams.set('$top', '2000');
     const wiqlResult = await adoRequest(wu.toString(), {
       method: 'POST', body: JSON.stringify({ query: wiql }),
     });
@@ -397,7 +413,6 @@ app.get('/api/throughput', async (req, res) => {
       });
     }
 
-    // Batch-fetch ClosedDate
     const closedItems = [];
     const BATCH = 200;
     for (let i = 0; i < ids.length; i += BATCH) {
@@ -408,51 +423,82 @@ app.get('/api/throughput', async (req, res) => {
         method: 'POST',
         body: JSON.stringify({
           ids: chunk,
-          fields: ['System.Id', 'Microsoft.VSTS.Common.ClosedDate'],
+          fields: wantDetail ? ENRICHED_FIELDS : LEAN_FIELDS,
           errorPolicy: 'Omit',
         }),
       });
       for (const raw of details.value || []) {
-        const cd = (raw.fields || {})['Microsoft.VSTS.Common.ClosedDate'];
-        if (cd) closedItems.push({ id: raw.id, closedDate: cd });
+        const f  = raw.fields || {};
+        const cd = f['Microsoft.VSTS.Common.ClosedDate'];
+        if (!cd) continue;
+
+        if (!wantDetail) {
+          closedItems.push({ id: Number(raw.id), closedDate: cd });
+          continue;
+        }
+
+        const at            = f['System.AssignedTo'];
+        const assignedTo    = at ? (at.displayName || at.uniqueName || 'Unknown') : 'Unassigned';
+        const activatedDate = f['Microsoft.VSTS.Common.ActivatedDate'] || null;
+        const rawCycleDays  = activatedDate
+          ? (new Date(cd) - new Date(activatedDate)) / 86400000
+          : null;
+        const cycleDays     = rawCycleDays != null && rawCycleDays >= 0
+          ? parseFloat(rawCycleDays.toFixed(1))
+          : null;
+        const spRaw         = f['Microsoft.VSTS.Scheduling.StoryPoints'];
+
+        closedItems.push({
+          id:           Number(f['System.Id'] || raw.id),
+          title:        String(f['System.Title']        || '(no title)'),
+          type:         String(f['System.WorkItemType'] || 'Unknown'),
+          priority:     f['Microsoft.VSTS.Common.Priority'] != null
+                          ? Number(f['Microsoft.VSTS.Common.Priority']) : null,
+          assignedTo,
+          area:         String(f['System.AreaPath']      || ''),
+          iteration:    String(f['System.IterationPath'] || ''),
+          closedDate:   cd,
+          activatedDate,
+          cycleDays,
+          storyPoints:  spRaw != null ? Number(spRaw) : null,
+        });
       }
     }
 
-    // Build time-ordered buckets covering the full history window
-    const bucketMap = new Map(); // key → { start, end, count }
+    const bucketMap   = new Map();
     const windowStart = new Date(since + 'T00:00:00Z');
     const today       = new Date();
     today.setUTCHours(23, 59, 59, 999);
 
     if (interval === 'week') {
-      // Walk forward in 7-day steps, anchored to the Monday of the window start
       let cursor = new Date(since + 'T00:00:00Z');
       const dow  = cursor.getUTCDay();
       cursor.setUTCDate(cursor.getUTCDate() + (dow === 0 ? -6 : 1 - dow));
-
       while (cursor <= today) {
         const start = cursor.toISOString().slice(0, 10);
         const end   = addDays(start, 6);
-        bucketMap.set(start, { start, end, count: 0 });
+        bucketMap.set(start, { start, end, count: 0, items: [] });
         cursor.setUTCDate(cursor.getUTCDate() + 7);
       }
     } else {
-      // Daily buckets
       let cursor = new Date(windowStart);
       cursor.setUTCHours(0, 0, 0, 0);
       while (cursor <= today) {
         const ds = cursor.toISOString().slice(0, 10);
-        bucketMap.set(ds, { start: ds, end: ds, count: 0 });
+        bucketMap.set(ds, { start: ds, end: ds, count: 0, items: [] });
         cursor.setUTCDate(cursor.getUTCDate() + 1);
       }
     }
 
-    // Place each item into its bucket
     for (const item of closedItems) {
       const key = interval === 'week'
         ? isoWeekStart(item.closedDate)
         : item.closedDate.slice(0, 10);
-      if (bucketMap.has(key)) bucketMap.get(key).count++;
+      const bucket = bucketMap.get(key);
+      if (bucket) {
+        bucket.count++;
+        if (wantDetail) bucket.items.push(item);
+      }
     }
 
     const buckets        = [...bucketMap.values()];
@@ -462,8 +508,12 @@ app.get('/api/throughput', async (req, res) => {
       ? parseFloat((counts.reduce((s, v) => s + v, 0) / counts.length).toFixed(2))
       : 0;
 
+    const responseBuckets = wantDetail
+      ? buckets
+      : buckets.map(b => ({ start: b.start, end: b.end, count: b.count }));
+
     res.json({
-      interval, buckets, totalCompleted,
+      interval, buckets: responseBuckets, totalCompleted,
       perInterval: {
         mean,
         min: counts.length ? Math.min(...counts) : 0,
@@ -543,7 +593,7 @@ app.get('/api/wi-cycle-time', async (req, res) => {
         const cycleDays = parseFloat(
           ((new Date(closedDate) - new Date(activatedDate)) / 86400000).toFixed(1)
         );
-        if (cycleDays < 0) continue; // skip bad data
+        if (cycleDays < 0) continue;
         allItems.push({
           id:         Number(f['System.Id'] || raw.id),
           type:       String(f['System.WorkItemType'] || 'Unknown'),
