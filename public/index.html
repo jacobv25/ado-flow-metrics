@@ -136,6 +136,10 @@
             <label><input type="checkbox" id="fEpic"      checked onchange="applyFilters()"> Epic</label>
           </div>
         </div>
+        <div class="filter-group" id="tagFilterGroup" style="margin-top:16px;display:none">
+          <label>Tags</label>
+          <div class="check-list" id="tagCheckList"></div>
+        </div>
         <div class="filter-group" style="margin-top:16px">
           <label>Age Band Key</label>
           <div class="band-legend">
@@ -272,6 +276,7 @@ async function loadData() {
   try {
     const data = await apiFetch(`/api/wip-aging?${params}`);
     allItems = data.items || [];
+    buildTagFilter();
     applyFilters();
     updateSummaryCards();
     updateChart();
@@ -287,6 +292,21 @@ async function loadData() {
 }
 
 // ─── Filters + sort ───────────────────────────────────────────────────────────
+function buildTagFilter() {
+  const allTags = [...new Set(allItems.flatMap(i => i.tags || []))].sort();
+  const group   = document.getElementById('tagFilterGroup');
+  const list    = document.getElementById('tagCheckList');
+  list.innerHTML = '';
+  if (!allTags.length) { group.style.display = 'none'; return; }
+  allTags.forEach(tag => {
+    const id  = 'fTag_' + tag.replace(/\W/g, '_');
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" id="${id}" data-tag="${tag}" checked onchange="applyFilters()"> ${tag}`;
+    list.appendChild(lbl);
+  });
+  group.style.display = '';
+}
+
 function applyFilters() {
   const q     = document.getElementById('searchInput').value.toLowerCase();
   const types = {
@@ -295,9 +315,17 @@ function applyFilters() {
     'Feature':    document.getElementById('fFeature').checked,
     'Epic':       document.getElementById('fEpic').checked,
   };
+  const tagBoxes       = document.querySelectorAll('#tagCheckList input[type=checkbox]');
+  const activeTags     = tagBoxes.length
+    ? new Set([...tagBoxes].filter(cb => cb.checked).map(cb => cb.dataset.tag))
+    : null;
 
   filteredItems = allItems.filter(item => {
     if (!types[item.type]) return false;
+    if (activeTags !== null) {
+      // hide item only when tags exist on the item AND none are selected
+      if ((item.tags || []).length && ![...(item.tags)].some(t => activeTags.has(t))) return false;
+    }
     if (q && ![item.title, item.assignedTo, item.state, String(item.id)]
           .some(s => s.toLowerCase().includes(q))) return false;
     return true;

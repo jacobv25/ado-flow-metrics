@@ -220,7 +220,7 @@ app.get('/api/wip-aging', async (req, res) => {
       'System.Id', 'System.Title', 'System.WorkItemType', 'System.State',
       'System.AssignedTo', 'Microsoft.VSTS.Common.StateChangeDate',
       'System.ChangedDate', 'System.AreaPath', 'System.IterationPath',
-      'Microsoft.VSTS.Common.Priority',
+      'Microsoft.VSTS.Common.Priority', 'System.Tags',
     ];
 
     const items = [];
@@ -251,6 +251,7 @@ app.get('/api/wip-aging', async (req, res) => {
           area:           String(f['System.AreaPath']     || ''),
           iteration:      String(f['System.IterationPath']|| ''),
           priority:       f['System.Priority'] != null ? Number(f['System.Priority']) : null,
+          tags:           f['System.Tags'] ? f['System.Tags'].split(';').map(t => t.trim()).filter(Boolean) : [],
         });
       }
     }
