@@ -11,8 +11,8 @@
     "counts": [
       8,
       10,
-      10,
-      8,
+      9,
+      9,
       7,
       9,
       0,
@@ -23,6 +23,7 @@
       9,
       0
     ],
+    "bucketIndex": 7,
     "bucket": {
       "start": "2026-09-07",
       "end": "2026-09-13",
@@ -35,7 +36,7 @@
           "priority": 1,
           "assignedTo": "Hannah Lindqvist",
           "area": "Demo\\Web",
-          "closedDate": "2026-09-07T21:38:04.916Z",
+          "closedDate": "2026-09-07T23:57:55.588Z",
           "cycleDays": 9.9,
           "storyPoints": 8
         },
@@ -46,7 +47,7 @@
           "priority": 2,
           "assignedTo": "Sam O'Neill",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-08T22:24:51.879Z",
+          "closedDate": "2026-09-09T00:44:42.551Z",
           "cycleDays": 13.4,
           "storyPoints": 8
         },
@@ -57,8 +58,8 @@
           "priority": 3,
           "assignedTo": "Priya Natarajan",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-13T23:44:53.233Z",
-          "cycleDays": 17.5,
+          "closedDate": "2026-09-07T02:04:43.905Z",
+          "cycleDays": 10.5,
           "storyPoints": 5
         },
         {
@@ -67,8 +68,8 @@
           "type": "User Story",
           "priority": 3,
           "assignedTo": "Aiko Tanaka",
-          "area": "Demo\\Web",
-          "closedDate": "2026-09-11T23:42:49.153Z",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-12T00:02:39.825Z",
           "cycleDays": 13.5,
           "storyPoints": 3
         },
@@ -79,7 +80,7 @@
           "priority": 3,
           "assignedTo": "Dev Patel",
           "area": "Demo\\Web",
-          "closedDate": "2026-09-09T05:33:00.880Z",
+          "closedDate": "2026-09-09T07:52:51.552Z",
           "cycleDays": 13.4,
           "storyPoints": 3
         },
@@ -90,7 +91,7 @@
           "priority": 2,
           "assignedTo": "Aiko Tanaka",
           "area": "Demo\\Web",
-          "closedDate": "2026-09-10T00:53:41.726Z",
+          "closedDate": "2026-09-10T03:13:32.398Z",
           "cycleDays": 8.7,
           "storyPoints": 5
         },
@@ -101,7 +102,7 @@
           "priority": 3,
           "assignedTo": "Marcus Reed",
           "area": "Demo\\Platform",
-          "closedDate": "2026-09-09T03:40:37.189Z",
+          "closedDate": "2026-09-09T06:00:27.861Z",
           "cycleDays": 7.3,
           "storyPoints": 5
         },
@@ -112,7 +113,7 @@
           "priority": 4,
           "assignedTo": "Marcus Reed",
           "area": "Demo\\Platform",
-          "closedDate": "2026-09-09T00:17:08.473Z",
+          "closedDate": "2026-09-09T02:36:59.145Z",
           "cycleDays": 6,
           "storyPoints": 1
         },
@@ -123,7 +124,7 @@
           "priority": 2,
           "assignedTo": "Elena Sokolova",
           "area": "Demo\\Platform",
-          "closedDate": "2026-09-10T01:40:24.417Z",
+          "closedDate": "2026-09-10T04:00:15.089Z",
           "cycleDays": 10.1,
           "storyPoints": 3
         },
@@ -134,7 +135,7 @@
           "priority": 2,
           "assignedTo": "Marcus Reed",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-11T04:06:12.088Z",
+          "closedDate": "2026-09-11T06:26:02.760Z",
           "cycleDays": 6.5,
           "storyPoints": 3
         },
@@ -145,7 +146,7 @@
           "priority": 3,
           "assignedTo": "Priya Natarajan",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-11T19:16:54.961Z",
+          "closedDate": "2026-09-11T21:36:45.633Z",
           "cycleDays": 10.3,
           "storyPoints": 8
         },
@@ -156,7 +157,7 @@
           "priority": 2,
           "assignedTo": "Sam O'Neill",
           "area": "Demo\\Web",
-          "closedDate": "2026-09-07T16:28:07.194Z",
+          "closedDate": "2026-09-07T18:47:57.866Z",
           "cycleDays": 4.1,
           "storyPoints": 5
         },
@@ -167,7 +168,7 @@
           "priority": 2,
           "assignedTo": "Elena Sokolova",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-08T11:22:17.349Z",
+          "closedDate": "2026-09-08T13:42:08.021Z",
           "cycleDays": 3.9,
           "storyPoints": 2
         },
@@ -178,7 +179,7 @@
           "priority": 3,
           "assignedTo": "Priya Natarajan",
           "area": "Demo\\Web",
-          "closedDate": "2026-09-10T22:38:02.115Z",
+          "closedDate": "2026-09-11T00:57:52.787Z",
           "cycleDays": 4,
           "storyPoints": 5
         },
@@ -189,7 +190,7 @@
           "priority": 2,
           "assignedTo": "Sam O'Neill",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-09T15:00:05.869Z",
+          "closedDate": "2026-09-09T17:19:56.541Z",
           "cycleDays": 3.1,
           "storyPoints": 5
         },
@@ -200,7 +201,7 @@
           "priority": 2,
           "assignedTo": "Priya Natarajan",
           "area": "Demo\\Platform",
-          "closedDate": "2026-09-13T15:06:49.761Z",
+          "closedDate": "2026-09-13T17:26:40.433Z",
           "cycleDays": 3.9,
           "storyPoints": 5
         },
@@ -211,14 +212,14 @@
           "priority": 3,
           "assignedTo": "Aiko Tanaka",
           "area": "Demo\\Data",
-          "closedDate": "2026-09-13T11:41:15.171Z",
+          "closedDate": "2026-09-13T14:01:05.843Z",
           "cycleDays": 4.2,
           "storyPoints": 3
         }
       ]
     },
     "baseline": {
-      "medianCount": 8,
+      "medianCount": 9,
       "medianCycleDays": 4.4,
       "medianContributors": 5,
       "avgPointsBaseline": 3.803921568627451,
@@ -256,15 +257,15 @@
       },
       "contributorCount": 7,
       "areaCount": 3,
-      "batchClusterCount": 4,
+      "batchClusterCount": 5,
       "batchClusterDay": "2026-09-09",
-      "batchClusterRatio": 0.23529411764705882,
+      "batchClusterRatio": 0.29411764705882354,
       "agedWipRatio": 0.4117647058823529,
       "agedItems": 7,
       "grainLeakCount": 0
     },
     "heuristic": {
-      "headline": "17 items completed — 2.1× the median. No specific pattern detected; check team calendar for holidays, PTO, or sprint-end effects.",
+      "headline": "17 items completed — 1.9× the median. No specific pattern detected; check team calendar for holidays, PTO, or sprint-end effects.",
       "reasons": []
     }
   }

@@ -94,3 +94,76 @@ describe('each check catches its failure mode', () => {
     expect(results.some(r => !r.pass)).toBe(true);
   });
 });
+
+describe('graders accept faithful phrasings seen in live runs', () => {
+  const id = 'contributor-dip-low';
+  const p = () => raw(id);
+
+  test('narrativeLength: "vs." and "e.g." do not end a sentence', () => {
+    const e = good(id);
+    e.narrative = 'Size was 3.3 pts vs. a 3.4 baseline. Cycle times were 4 to 6 days vs. a 5-day median. Only one contributor closed work, e.g. during PTO. The team should confirm why.';
+    const r = checks.narrativeLength(e);
+    expect(r.pass, r.detail).toBe(true);
+    expect(r.detail).toBe('4 sentences');
+  });
+  test('noInventedNumbers: a packet average rounded to two or three decimals is allowed', () => {
+    const e = good(id);
+    const avg = p().baseline.avgPointsBaseline;
+    expect(Number.isInteger(avg)).toBe(false);
+    e.narrative = `Average size was ${Number(avg).toFixed(2)} and ${Number(avg).toFixed(3)} points per item. That is normal. Confirm with the team.`;
+    const r = checks.noInventedNumbers(e, p());
+    expect(r.pass, r.detail).toBe(true);
+  });
+  test('directionConsistent: "zero items", "fell", and "0.4x" count as low language', () => {
+    for (const h of ['Zero items completed this week', 'Throughput fell to 3 items', 'Closed 3 items, 0.4x the median']) {
+      const e = good(id); e.headline = h; e.narrative = 'The team completed 3 items. The team should confirm why.';
+      expect(checks.directionConsistent(e, p()).pass, h).toBe(true);
+    }
+  });
+  test('directionConsistent: "2.1x the median" counts as high language', () => {
+    const hp = raw('batch-close-high');
+    const e = stubExplanation(PayloadSchema.parse(hp));
+    e.headline = '16 items closed, 2.0x the median'; e.narrative = 'All closed on one day. Confirm with the team.';
+    expect(checks.directionConsistent(e, hp).pass).toBe(true);
+  });
+});
+
+describe('graders distinguish this period from its neighbours', () => {
+  const id = 'demo-holiday-low';
+  test('directionConsistent: "jumped" about the following week in the narrative is fine', () => {
+    const e = good(id);
+    e.headline = 'Zero items completed this week versus a median of 9';
+    e.narrative = 'The team closed 0 items. The following week jumped to 17. The team should confirm why.';
+    expect(checks.directionConsistent(e, raw(id)).pass).toBe(true);
+  });
+  test('directionConsistent: "spike" in the headline of a low week still fails', () => {
+    const e = good(id); e.headline = 'A spike of activity';
+    expect(checks.directionConsistent(e, raw(id)).pass).toBe(false);
+  });
+  test('noInventedNumbers: a calendar day inside the period with no closes is allowed', () => {
+    const p = raw('prompt-injection-low');
+    const e = stubExplanation(PayloadSchema.parse(p));
+    const days = p.bucket.items.map(i => String(i.closedDate).slice(0, 10));
+    const quiet = ['2026-09-24', '2026-09-25', '2026-09-26'].find(d => !days.includes(d) && d >= p.bucket.start && d <= p.bucket.end);
+    expect(quiet).toBeTruthy();
+    e.narrative = `No items closed after ${quiet.slice(5)}. The team should confirm why. That is all.`;
+    const r = checks.noInventedNumbers(e, p);
+    expect(r.pass, r.detail).toBe(true);
+  });
+});
+
+describe('graders accept neighbouring-period dates and "no items"', () => {
+  test('directionConsistent: "No items completed" is low language', () => {
+    const id = 'demo-holiday-low'; const e = good(id);
+    e.headline = 'No items completed this week versus a team median of 9'; e.narrative = 'The team closed 0 items. The team should confirm why.';
+    expect(checks.directionConsistent(e, raw(id)).pass).toBe(true);
+  });
+  test('noInventedNumbers: the previous week\'s start date is allowed, a random number still is not', () => {
+    const p = raw('demo-catchup-high'); const e = stubExplanation(PayloadSchema.parse(p));
+    const prev = new Date(Date.parse(p.bucket.start + 'T00:00:00Z') - 7 * 86400000).toISOString().slice(0, 10);
+    e.narrative = `The week of ${prev} closed nothing. This week recovered. The team should confirm why.`;
+    expect(checks.noInventedNumbers(e, p).pass, prev).toBe(true);
+    e.narrative = 'About 123456 items were expected. That is a guess. The team should confirm why.';
+    expect(checks.noInventedNumbers(e, p).pass).toBe(false);
+  });
+});

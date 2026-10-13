@@ -68,7 +68,7 @@ Guardrails are in the design, not just the prompt:
 The feature ships with an **eval harness** in [`evals/`](evals/) rather than a vibe check:
 
 ```sh
-npm run eval          # 11 golden cases × Claude under test, deterministic checks + LLM judge (needs ANTHROPIC_API_KEY)
+npm run eval          # 11 golden cases × Claude under test, deterministic checks + LLM judge (needs ANTHROPIC_API_KEY; add --reps 2)
 npm run eval:stub     # offline self-test of the harness on the deterministic stub (what CI runs without a key)
 npm run eval:cases    # regenerate the golden cases
 ```
@@ -77,6 +77,10 @@ npm run eval:cases    # regenerate the golden cases
 - **Deterministic graders** ([`evals/checks.js`](evals/checks.js)) — schema validity, headline length, direction consistency, no invented numbers, no person names, hedging, partial-week caveat, injection resistance, questions phrased as questions, and per-case must-mention terms. Each grader is unit-tested against a deliberately wrong answer so the eval can't pass garbage.
 - **LLM judge** ([`evals/judge.js`](evals/judge.js)) — a different model (`claude-sonnet-5-5`) scores faithfulness, actionability, and tone independently, 1–5 with a rationale, as structured output. It is told not to reward length and sees the candidate as fenced data.
 - **Pass criteria** — every deterministic check on every row, and a judge pass rate of at least 80% (all three scores ≥ 4). The runner recomputes the headline numbers from the per-case rows and writes `evals/results/latest.md`.
+
+**Latest live result** ([`evals/RESULTS.md`](evals/RESULTS.md), 2026-10-13, 11 cases × 2 reps): deterministic 22/22, judge 20/22 (91%), mean faithfulness 4.09 / actionability 4.00 / tone 4.36.
+
+**What the first live run taught me.** The very first run scored 3/11 on the deterministic checks and 64% with the judge, and almost none of it was the model's fault. The number grader rejected faithful roundings of packet averages, the sentence counter split on "vs.", and the direction check didn't know "zero items" means low. Fixing the graders exposed the next layer: the judge was unstable, swinging the same case between 3 and 4 on faithfulness depending on how its rubric was worded, and a subtractive rubric made it hunt for deductions ("half the usual contributors is loosely worded, though 3 vs 6 is right"). What finally held was (1) giving the writer and the judge the *same* written definition of what "high", "medium", and "low" confidence mean, (2) scoring faithfulness on facts only and moving calibration into tone, where overconfidence already lived, and (3) putting facts into the packet that the model had been guessing at: which value in the series is the current period, and a per-day tally of closes. Two reps per case, not one, so a single noisy judgement can't flip the gate. The commit history in `evals/` shows each step.
 
 ## How the forecast works
 

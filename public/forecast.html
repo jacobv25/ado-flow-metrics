@@ -1205,7 +1205,7 @@ async function explainWithAi(idx, btn) {
 
   const payload = {
     interval: throughputData.interval || 'week',
-    flag, isPartial, counts,
+    flag, isPartial, counts, bucketIndex: idx,
     bucket: { start: bucket.start, end: bucket.end, count: bucket.count,
               items: (bucket.items || []).map(i => ({ id: i.id, title: i.title, type: i.type, priority: i.priority,
                        area: i.area, cycleDays: i.cycleDays, storyPoints: i.storyPoints, closedDate: i.closedDate })) },

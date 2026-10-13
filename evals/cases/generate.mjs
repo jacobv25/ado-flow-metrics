@@ -28,7 +28,7 @@ function finish(id, tags, buckets, idx, flag, extra = {}) {
   const summary  = O.summarizeBucket(bucket, baseline);
   const heuristic = O.explainOutlier(bucket, summary, baseline, flag);
   const payload = {
-    interval: 'week', flag, isPartial: Boolean(extra.isPartial), counts: buckets.map(b => b.count),
+    interval: 'week', flag, isPartial: Boolean(extra.isPartial), counts: buckets.map(b => b.count), bucketIndex: idx,
     bucket: { start: bucket.start, end: bucket.end, count: bucket.count, items: bucket.items },
     baseline: { medianCount: baseline.medianCount, medianCycleDays: baseline.medianCycleDays, medianContributors: baseline.medianContributors, avgPointsBaseline: baseline.avgPointsBaseline, typeBaseline: baseline.typeBaseline },
     summary, heuristic,
