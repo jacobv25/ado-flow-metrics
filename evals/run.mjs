@@ -13,6 +13,7 @@
  * Writes evals/results/latest.json and latest.md. The headline numbers are
  * recomputed from the per-case rows at the end, never read from an aggregate.
  */
+import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
