@@ -1,33 +1,18 @@
-'use strict';
 
 /**
  * tests/outliers.test.js
  *
  * Unit tests for lib/outliers.js
- * Run with:  node tests/outliers.test.js
+ * Run with:  npm test   (Vitest)
  */
 
-const assert   = require('assert');
-const Outliers = require('../lib/outliers');
+import { test } from 'vitest';
+import assert from 'node:assert';
+import Outliers from '../../lib/outliers.js';
 const { detectOutliers, computeBaseline, summarizeBucket, explainOutlier } = Outliers;
 
-let passed = 0;
-let failed = 0;
-
-function test(name, fn) {
-  try {
-    fn();
-    console.log('  ✅ ' + name);
-    passed++;
-  } catch (e) {
-    console.error('  ❌ ' + name);
-    console.error('     ' + e.message);
-    failed++;
-  }
-}
-
 // ─── detectOutliers ───────────────────────────────────────────────────────────
-console.log('\n── detectOutliers ──');
+// ── detectOutliers ──
 
 test('known spike is flagged high (IQR method)', () => {
   const counts = [2, 3, 3, 4, 4, 4, 5, 5, 6, 11];
@@ -108,7 +93,7 @@ test('median is computed correctly for even-length array', () => {
 });
 
 // ─── computeBaseline ──────────────────────────────────────────────────────────
-console.log('\n── computeBaseline ──');
+// ── computeBaseline ──
 
 function makeBucket(items, count) {
   return { count: count != null ? count : items.length, items };
@@ -151,7 +136,7 @@ test('computeBaseline empty buckets returns safe defaults', () => {
 });
 
 // ─── summarizeBucket ──────────────────────────────────────────────────────────
-console.log('\n── summarizeBucket ──');
+// ── summarizeBucket ──
 
 const baseline = computeBaseline(sampleBuckets);
 
@@ -218,7 +203,7 @@ test('summarizeBucket falls back to cycleDays when points absent', () => {
 });
 
 // ─── explainOutlier ────────────────────────────────────────────────────────────
-console.log('\n── explainOutlier ──');
+// ── explainOutlier ──
 
 test('explainOutlier fires grain-leak reason when present', () => {
   const bucket = makeBucket([
@@ -293,7 +278,7 @@ test('explainOutlier with no pattern returns generic headline', () => {
 });
 
 // ─── Backward-compat guard: count unchanged by enrichment ─────────────────────
-console.log('\n── Backward compatibility ──');
+// ── Backward compatibility ──
 
 test('bucket count is preserved after adding items[]', () => {
   // Simulate an enriched bucket — count must equal items.length
@@ -308,13 +293,3 @@ test('bucket count is preserved after adding items[]', () => {
   assert.strictEqual(bucket.count, bucket.items.length, 'count must equal items.length');
   assert.strictEqual(typeof bucket.count, 'number', 'count must be a number');
 });
-
-// ─── Summary ──────────────────────────────────────────────────────────────────
-console.log('\n' + '─'.repeat(50));
-console.log(`Results: ${passed} passed, ${failed} failed`);
-if (failed > 0) {
-  console.error('\nTest suite FAILED');
-  process.exit(1);
-} else {
-  console.log('\nAll tests passed ✅');
-}

@@ -69,7 +69,8 @@ lib/demoAdo.js         Fake ADO for DEMO_MODE: seeded synthetic team, same endpo
 lib/montecarlo.js      Forecasting (pure, UMD, seedable).
 lib/outliers.js        Outlier detection + attribution (pure, UMD).
 public/                Three hand-written pages + shared common.js/styles.css. Chart.js via SRI-pinned CDN.
-tests/                 Node assert-based tests (no framework).
+tests/unit/            Vitest unit tests for the analytics modules and the demo fake.
+tests/e2e/             Playwright suite that boots demo mode and drives all three pages.
 docs/plans/            The design docs each feature was built from (see below).
 ```
 
@@ -86,10 +87,25 @@ Each feature beyond the original WIP view started as a written plan — options,
 ## Tests
 
 ```sh
-npm test
+npm test            # unit — Vitest
+npm run test:e2e    # end-to-end — Playwright, boots demo mode itself
+npm run test:all
 ```
 
-Unit tests cover outlier detection (IQR and MAD paths, degenerate inputs), baseline computation, bucket summarization, and the explanation narratives. CI runs them on Node 20 and 22, then boots demo mode and hits every route. Planned next: a Playwright end-to-end suite against demo mode, and tests for `montecarlo.js` (its header documents the degenerate-sample contract to assert).
+**Unit (Vitest, `tests/unit/`)** — the pure analytics modules and the demo fake:
+
+- `outliers.test.js` — IQR and MAD detection paths, degenerate inputs, baseline computation, bucket summaries, explanation narratives.
+- `montecarlo.test.js` — the forecasting contract with an injected seeded RNG: degenerate samples give exact answers, percentiles are monotonic, same seed → same forecast, zero-throughput history returns the sentinel instead of looping, inverted `atLeastXX` percentiles order correctly.
+- `demoAdo.test.js` — the fake honours the slice of the Azure DevOps REST contract `server.js` depends on: WIQL state/type/date filters and `$top`, batch field selection with `errorPolicy: Omit`, PR pagination and `minTime`.
+
+**End-to-end (Playwright, `tests/e2e/`)** — hermetic, against demo mode on a throwaway port:
+
+- `api.spec.js` — every route's shape, plus input validation (`400` on malformed states, bad windows, unknown PR status). Includes a regression for the priority field that used to come back `null`.
+- `work-items.spec.js` — summary cards agree with the table, most-aged-first ordering, search, type and tag filters, threshold settings persisting across a reload.
+- `pull-requests.spec.js` — review-state filters, conflicts-only, cycle-time window switch, and a regression for the "undefined PRs merged" caption.
+- `forecast.spec.js` — throughput cards are internally consistent, outlier panel flags the holiday dip low and the catch-up week high, "how long" yields four ordered dates, a deadline switches to "how many" mode, cycle-time percentiles are ordered.
+
+CI runs the unit suite on Node 20 and 22 and the Playwright suite on Chromium; a failed e2e run uploads the HTML report as an artifact.
 
 ## Known limitations
 
@@ -99,7 +115,7 @@ Unit tests cover outlier detection (IQR and MAD paths, degenerate inputs), basel
 
 ## Built with
 
-Node 18+, Express, Chart.js, and an AI coding agent (Claude Code) in the loop — the plan documents above were the planning artifacts for each session.
+Node 18+, Express, Chart.js, Vitest, Playwright, and an AI coding agent (Claude Code) in the loop — the plan documents above were the planning artifacts for each session.
 
 ## License
 
