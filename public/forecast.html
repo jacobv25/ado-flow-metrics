@@ -123,8 +123,20 @@
     }
     .outlier-card.high { border-color: var(--orange); background: var(--orange-bg); }
     .outlier-card.low  { border-color: var(--yellow); background: var(--yellow-bg); }
-    .oc-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-    .oc-ai-btn { border-color: var(--blue, #2563eb); color: var(--blue, #2563eb); }
+    .oc-actions { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+    .outlier-card .oc-ai-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 6px; padding: 6px 14px;
+      font-size: 12px; font-weight: 600; letter-spacing: .01em;
+      color: #fff; background: var(--blue); border: 1px solid var(--blue-dark);
+      border-radius: 999px; text-decoration: none; cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,.12);
+      transition: background .15s, box-shadow .15s, transform .05s;
+    }
+    .outlier-card .oc-ai-btn:hover { background: var(--blue-dark); box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    .outlier-card .oc-ai-btn:active { transform: translateY(1px); box-shadow: none; }
+    .outlier-card .oc-ai-btn:focus-visible { outline: 2px solid var(--blue-dark); outline-offset: 2px; }
+    .outlier-card .oc-ai-btn:disabled { opacity: .55; cursor: progress; box-shadow: none; }
     .oc-ai { margin-top:10px; padding:12px 14px; background:#fff; border:1px solid var(--gray-200); border-radius:var(--radius); font-size:13px; line-height:1.5; }
     .oc-ai .ai-headline { font-weight:600; margin-bottom:4px; }
     .oc-ai .ai-section { margin-top:8px; }
@@ -1159,7 +1171,7 @@ function renderOutlierInsights() {
         '<div class="oc-actions">' +
           '<button class="oc-detail-btn" onclick="showDrillDown(' + idx + ')">View detail &rarr;</button>' +
           (aiMode !== 'off'
-            ? '<button class="oc-detail-btn oc-ai-btn" onclick="explainWithAi(' + idx + ', this)">&#x2728; Explain with AI</button>'
+            ? '<button class="oc-ai-btn" onclick="explainWithAi(' + idx + ', this)">&#x2728; Explain with AI</button>'
             : '') +
         '</div>' +
         '<div class="oc-ai" id="ocAi-' + idx + '" style="display:none"></div>' +
