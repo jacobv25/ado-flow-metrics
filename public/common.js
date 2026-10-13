@@ -82,7 +82,7 @@ async function loadServerConfig() {
     strip.classList.add('visible');
     document.getElementById('serverProjectLabel').innerHTML =
       `Project: <a href="${esc(cfg.projectUrl)}" target="_blank" rel="noopener">${esc(cfg.project)}</a>`;
-    document.getElementById('topProject').textContent = `· ${cfg.project}`;
+    document.getElementById('topProject').textContent = `· ${cfg.project}` + (cfg.demo ? ' · demo data' : '');
     setStatusDot('ok');
     return cfg;
   } catch {

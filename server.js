@@ -5,13 +5,20 @@ require('dotenv').config();
 const express = require('express');
 const path    = require('path');
 
-const { adoRequest, ADO_API_VERSION } = require('./lib/adoClient');
+// DEMO_MODE=true swaps the live Azure DevOps client for lib/demoAdo.js — a
+// deterministic fake that answers the same endpoints with synthetic data.
+// Every route below runs unchanged; only the transport differs.
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+
+const { adoRequest: liveRequest, ADO_API_VERSION } = require('./lib/adoClient');
+const adoRequest = DEMO_MODE ? require('./lib/demoAdo').demoRequest : liveRequest;
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3333', 10);
 
-const ADO_ORG     = (process.env.ADO_ORG     || '').replace(/\/+$/, '');
-const ADO_PROJECT = process.env.ADO_PROJECT   || '';
+const ADO_ORG     = DEMO_MODE ? 'https://dev.azure.com/demo-org'
+                              : (process.env.ADO_ORG || '').replace(/\/+$/, '');
+const ADO_PROJECT = DEMO_MODE ? 'Demo Project' : (process.env.ADO_PROJECT || '');
 
 // --- Startup validation -------------------------------------------------------
 function isValidAdoOrgUrl(url) {
@@ -20,6 +27,7 @@ function isValidAdoOrgUrl(url) {
 }
 
 function validateEnv() {
+  if (DEMO_MODE) return;
   const missing = ['ADO_PAT', 'ADO_ORG', 'ADO_PROJECT'].filter(k => !process.env[k]);
   if (missing.length) {
     console.error('\nMissing required env vars:', missing.join(', '));
@@ -188,6 +196,7 @@ app.get('/api/config', (_req, res) => {
     org:        ADO_ORG,
     project:    ADO_PROJECT,
     projectUrl: ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT),
+    demo:       DEMO_MODE,
   });
 });
 
@@ -250,7 +259,7 @@ app.get('/api/wip-aging', async (req, res) => {
           stateChangedOn: stateChangeDate,
           area:           String(f['System.AreaPath']     || ''),
           iteration:      String(f['System.IterationPath']|| ''),
-          priority:       f['System.Priority'] != null ? Number(f['System.Priority']) : null,
+          priority:       f['Microsoft.VSTS.Common.Priority'] != null ? Number(f['Microsoft.VSTS.Common.Priority']) : null,
           tags:           f['System.Tags'] ? f['System.Tags'].split(';').map(t => t.trim()).filter(Boolean) : [],
         });
       }
@@ -632,7 +641,7 @@ app.listen(PORT, '127.0.0.1', () => {
   console.log('    Project : ' + ADO_PROJECT);
   console.log('    Org     : ' + ADO_ORG);
   console.log('    API     : ' + ADO_API_VERSION);
-  console.log('    PAT     : ' + '*'.repeat(8) + ' (from environment)');
+  console.log('    PAT     : ' + (DEMO_MODE ? 'none (DEMO_MODE — synthetic data, no ADO calls)' : '*'.repeat(8) + ' (from environment)'));
   console.log('    Routes  : /api/config  /api/wip-aging  /api/pr-aging  /api/pr-cycle-time');
   console.log('              /api/throughput  /api/wi-cycle-time\n');
 });

@@ -426,7 +426,7 @@ function updateSummaryCards(cycleData) {
     document.getElementById('statCycleAvg').textContent = '—';
   }
   document.getElementById('cycleSubhead').textContent =
-    cycleData ? `(${cycleData.count} PRs merged in last ${cycleData.days} days)` : '';
+    cycleData ? `(${cycleData.total} PRs merged in last ${cycleData.days} days)` : '';
 }
 
 // ─── Aging distribution chart ─────────────────────────────────────────────────

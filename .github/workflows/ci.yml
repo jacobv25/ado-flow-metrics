@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Demo mode boots and serves every route
+        run: |
+          DEMO_MODE=true PORT=3344 node server.js & echo $! > server.pid
+          for i in $(seq 1 50); do curl -sf localhost:3344/api/config && break; sleep 0.2; done
+          for r in "wip-aging?states=Active" "pr-aging?status=active" "pr-cycle-time?days=30" \
+                   "throughput?days=84&interval=week" "wi-cycle-time?days=84"; do
+            curl -sf "localhost:3344/api/$r" > /dev/null || { echo "route failed: $r"; exit 1; }
+          done
+          kill "$(cat server.pid)"
