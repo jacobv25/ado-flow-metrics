@@ -12,6 +12,7 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true';
 
 const { adoRequest: liveRequest, ADO_API_VERSION } = require('./lib/adoClient');
 const adoRequest = DEMO_MODE ? require('./lib/demoAdo').demoRequest : liveRequest;
+const explainLib = require('./lib/explain');
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3333', 10);
@@ -190,6 +191,7 @@ function adoErrorMessage(err, feature) {
 
 // --- Routes ------------------------------------------------------------------
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: '256kb' }));
 
 app.get('/api/config', (_req, res) => {
   res.json({
@@ -197,6 +199,7 @@ app.get('/api/config', (_req, res) => {
     project:    ADO_PROJECT,
     projectUrl: ADO_ORG + '/' + encodeURIComponent(ADO_PROJECT),
     demo:       DEMO_MODE,
+    ai:         { mode: explainLib.mode(), model: explainLib.mode() === 'claude' ? explainLib.MODEL : null },
   });
 });
 
@@ -632,6 +635,25 @@ app.get('/api/wi-cycle-time', async (req, res) => {
   }
 });
 
+// POST /api/explain-outlier  — body: the flagged bucket + summary + baseline + heuristic
+// Returns a schema-validated explanation from Claude (or the demo stub).
+app.post('/api/explain-outlier', async (req, res) => {
+  try {
+    const result = await explainLib.explain(req.body || {});
+    res.json(result);
+  } catch (err) {
+    if (err.code === 'invalid') return res.status(400).json({ error: err.message });
+    if (err.code === 'off')     return res.status(503).json({ error: err.message });
+    if (err.code === 'refusal' || err.code === 'incomplete') return res.status(502).json({ error: err.message });
+    // Anthropic SDK errors carry a numeric status; map auth/rate-limit to something actionable.
+    const status = err.status;
+    console.error('[explain-outlier] Error:', err.message);
+    if (status === 401) return res.status(502).json({ error: 'The Anthropic API rejected the key. Check ANTHROPIC_API_KEY.' });
+    if (status === 429) return res.status(503).json({ error: 'Rate limited by the Anthropic API. Try again in a moment.' });
+    res.status(502).json({ error: 'AI explanation failed. Check the server terminal for details.' });
+  }
+});
+
 // --- Start -------------------------------------------------------------------
 validateEnv();
 
@@ -643,5 +665,6 @@ app.listen(PORT, '127.0.0.1', () => {
   console.log('    API     : ' + ADO_API_VERSION);
   console.log('    PAT     : ' + (DEMO_MODE ? 'none (DEMO_MODE — synthetic data, no ADO calls)' : '*'.repeat(8) + ' (from environment)'));
   console.log('    Routes  : /api/config  /api/wip-aging  /api/pr-aging  /api/pr-cycle-time');
-  console.log('              /api/throughput  /api/wi-cycle-time\n');
+  console.log('              /api/throughput  /api/wi-cycle-time  POST /api/explain-outlier');
+  console.log('    AI      : ' + (explainLib.mode() === 'claude' ? explainLib.MODEL : explainLib.mode() === 'stub' ? 'demo stub (set ANTHROPIC_API_KEY for Claude)' : 'off (set ANTHROPIC_API_KEY)') + '\n');
 });

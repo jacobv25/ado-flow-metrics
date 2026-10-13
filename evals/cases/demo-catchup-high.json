@@ -1,0 +1,271 @@
+{
+  "id": "demo-catchup-high",
+  "tags": [
+    "demo",
+    "high"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "high",
+    "isPartial": false,
+    "counts": [
+      8,
+      10,
+      10,
+      8,
+      7,
+      9,
+      0,
+      17,
+      7,
+      11,
+      6,
+      9,
+      0
+    ],
+    "bucket": {
+      "start": "2026-09-07",
+      "end": "2026-09-13",
+      "count": 17,
+      "items": [
+        {
+          "id": 4286,
+          "title": "Timeline scrolls to top on refresh (4)",
+          "type": "Bug",
+          "priority": 1,
+          "assignedTo": "Hannah Lindqvist",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-07T21:38:04.916Z",
+          "cycleDays": 9.9,
+          "storyPoints": 8
+        },
+        {
+          "id": 4287,
+          "title": "Stale badge shows wrong day count after DST (4)",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Sam O'Neill",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-08T22:24:51.879Z",
+          "cycleDays": 13.4,
+          "storyPoints": 8
+        },
+        {
+          "id": 4288,
+          "title": "Support on-prem Azure DevOps Server — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Priya Natarajan",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-13T23:44:53.233Z",
+          "cycleDays": 17.5,
+          "storyPoints": 5
+        },
+        {
+          "id": 4289,
+          "title": "Group WIP table by assignee — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Aiko Tanaka",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-11T23:42:49.153Z",
+          "cycleDays": 13.5,
+          "storyPoints": 3
+        },
+        {
+          "id": 4291,
+          "title": "OAuth sign-in instead of PAT — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Dev Patel",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-09T05:33:00.880Z",
+          "cycleDays": 13.4,
+          "storyPoints": 3
+        },
+        {
+          "id": 4292,
+          "title": "PR list drops items beyond page 2 (4)",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Aiko Tanaka",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-10T00:53:41.726Z",
+          "cycleDays": 8.7,
+          "storyPoints": 5
+        },
+        {
+          "id": 4293,
+          "title": "Trend sparkline on summary cards — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Marcus Reed",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-09T03:40:37.189Z",
+          "cycleDays": 7.3,
+          "storyPoints": 5
+        },
+        {
+          "id": 4294,
+          "title": "Localize date formats — part 5",
+          "type": "User Story",
+          "priority": 4,
+          "assignedTo": "Marcus Reed",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-09T00:17:08.473Z",
+          "cycleDays": 6,
+          "storyPoints": 1
+        },
+        {
+          "id": 4295,
+          "title": "Archive completed sprints view — part 5",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Elena Sokolova",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-10T01:40:24.417Z",
+          "cycleDays": 10.1,
+          "storyPoints": 3
+        },
+        {
+          "id": 4296,
+          "title": "Forecast chart overflows on narrow screens (4)",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Marcus Reed",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-11T04:06:12.088Z",
+          "cycleDays": 6.5,
+          "storyPoints": 3
+        },
+        {
+          "id": 4297,
+          "title": "Inline edit of work item priority — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Priya Natarajan",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-11T19:16:54.961Z",
+          "cycleDays": 10.3,
+          "storyPoints": 8
+        },
+        {
+          "id": 4298,
+          "title": "Tag filter is case-sensitive (4)",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Sam O'Neill",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-07T16:28:07.194Z",
+          "cycleDays": 4.1,
+          "storyPoints": 5
+        },
+        {
+          "id": 4299,
+          "title": "Percentile labels overlap at small widths (4)",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Elena Sokolova",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-08T11:22:17.349Z",
+          "cycleDays": 3.9,
+          "storyPoints": 2
+        },
+        {
+          "id": 4302,
+          "title": "Drill-down from bucket to items — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Priya Natarajan",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-10T22:38:02.115Z",
+          "cycleDays": 4,
+          "storyPoints": 5
+        },
+        {
+          "id": 4303,
+          "title": "Rate-limit retry for ADO API calls — part 5",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Sam O'Neill",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-09T15:00:05.869Z",
+          "cycleDays": 3.1,
+          "storyPoints": 5
+        },
+        {
+          "id": 4304,
+          "title": "Cache work item batches for 60s — part 5",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Priya Natarajan",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-13T15:06:49.761Z",
+          "cycleDays": 3.9,
+          "storyPoints": 5
+        },
+        {
+          "id": 4305,
+          "title": "Add area path breadcrumbs — part 5",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Aiko Tanaka",
+          "area": "Demo\\Data",
+          "closedDate": "2026-09-13T11:41:15.171Z",
+          "cycleDays": 4.2,
+          "storyPoints": 3
+        }
+      ]
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 4.4,
+      "medianContributors": 5,
+      "avgPointsBaseline": 3.803921568627451,
+      "typeBaseline": [
+        {
+          "type": "Bug",
+          "count": 28,
+          "fraction": 0.27450980392156865
+        },
+        {
+          "type": "User Story",
+          "count": 74,
+          "fraction": 0.7254901960784313
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 17,
+      "typeMix": [
+        {
+          "type": "Bug",
+          "count": 6,
+          "fraction": 0.35294117647058826
+        },
+        {
+          "type": "User Story",
+          "count": 11,
+          "fraction": 0.6470588235294118
+        }
+      ],
+      "sizeMix": {
+        "source": "storyPoints",
+        "avg": 4.5,
+        "populated": 17
+      },
+      "contributorCount": 7,
+      "areaCount": 3,
+      "batchClusterCount": 4,
+      "batchClusterDay": "2026-09-09",
+      "batchClusterRatio": 0.23529411764705882,
+      "agedWipRatio": 0.4117647058823529,
+      "agedItems": 7,
+      "grainLeakCount": 0
+    },
+    "heuristic": {
+      "headline": "17 items completed — 2.1× the median. No specific pattern detected; check team calendar for holidays, PTO, or sprint-end effects.",
+      "reasons": []
+    }
+  }
+}

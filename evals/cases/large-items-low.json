@@ -1,0 +1,121 @@
+{
+  "id": "large-items-low",
+  "tags": [
+    "shaped",
+    "low",
+    "size-shift"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "low",
+    "isPartial": false,
+    "counts": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      3,
+      8
+    ],
+    "bucket": {
+      "start": "2026-09-21",
+      "end": "2026-09-27",
+      "count": 3,
+      "items": [
+        {
+          "id": 9408,
+          "title": "Replace vis.js timeline with canvas renderer",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-24T15:00:00.000Z",
+          "cycleDays": 18,
+          "storyPoints": 13
+        },
+        {
+          "id": 9409,
+          "title": "Migrate legacy report service",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 21,
+          "storyPoints": 8
+        },
+        {
+          "id": 9410,
+          "title": "SSO integration with corporate IdP",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-21T15:00:00.000Z",
+          "cycleDays": 16,
+          "storyPoints": 13
+        }
+      ]
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 6,
+      "medianContributors": 6,
+      "avgPointsBaseline": 3.6865671641791047,
+      "typeBaseline": [
+        {
+          "type": "User Story",
+          "count": 51,
+          "fraction": 0.7611940298507462
+        },
+        {
+          "type": "Bug",
+          "count": 16,
+          "fraction": 0.23880597014925373
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 3,
+      "typeMix": [
+        {
+          "type": "User Story",
+          "count": 3,
+          "fraction": 1
+        }
+      ],
+      "sizeMix": {
+        "source": "storyPoints",
+        "avg": 11.3,
+        "populated": 3
+      },
+      "contributorCount": 3,
+      "areaCount": 2,
+      "batchClusterCount": 1,
+      "batchClusterDay": "2026-09-24",
+      "batchClusterRatio": 0.3333333333333333,
+      "agedWipRatio": 1,
+      "agedItems": 3,
+      "grainLeakCount": 0
+    },
+    "heuristic": {
+      "headline": "3 of 3 items had unusually long cycle times (>2× the median of 6d) — likely an aged-WIP backlog flush.",
+      "reasons": [
+        {
+          "code": "aged-wip",
+          "detail": "3 of 3 items had unusually long cycle times (>2× the median of 6d) — likely an aged-WIP backlog flush."
+        },
+        {
+          "code": "contributor-dip",
+          "detail": "Only 3 contributors active vs. the usual ~6 — capacity may have been reduced (holidays, PTO, or competing priorities)."
+        }
+      ]
+    },
+    "_mustMention": [
+      "larger|bigger|large|size|points|longer|big|long-running|aged|older|cycle time"
+    ]
+  }
+}

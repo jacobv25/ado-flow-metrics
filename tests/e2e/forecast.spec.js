@@ -61,3 +61,20 @@ test.describe('Forecast (throughput, outliers, Monte Carlo)', () => {
     expect(p85).toBeLessThanOrEqual(p95);
   });
 });
+
+test.describe('Explain with AI (demo stub, no key)', () => {
+  test('renders a structured explanation inside the outlier card', async ({ page }) => {
+    await page.goto('/forecast.html');
+    await expect(page.locator('#loadingOverlay')).not.toHaveClass(/on/);
+    const btn = page.locator('.oc-ai-btn').first();
+    await expect(btn).toBeVisible();
+    await btn.click();
+    const box = page.locator('.oc-ai').first();
+    await expect(box).toBeVisible();
+    await expect(box.locator('.ai-headline')).not.toBeEmpty();
+    await expect(box).toContainText(/Likely causes/i);
+    await expect(box).toContainText(/Questions to ask/i);
+    await expect(box.locator('.ai-sample')).toHaveText('Sample explanation');
+    await expect(btn).toBeEnabled();
+  });
+});

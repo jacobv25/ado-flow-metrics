@@ -1,0 +1,81 @@
+{
+  "id": "demo-holiday-low",
+  "tags": [
+    "demo",
+    "low",
+    "capacity"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "low",
+    "isPartial": false,
+    "counts": [
+      8,
+      10,
+      10,
+      8,
+      7,
+      9,
+      0,
+      17,
+      7,
+      11,
+      6,
+      9,
+      0
+    ],
+    "bucket": {
+      "start": "2026-08-31",
+      "end": "2026-09-06",
+      "count": 0,
+      "items": []
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 4.4,
+      "medianContributors": 5,
+      "avgPointsBaseline": 3.803921568627451,
+      "typeBaseline": [
+        {
+          "type": "Bug",
+          "count": 28,
+          "fraction": 0.27450980392156865
+        },
+        {
+          "type": "User Story",
+          "count": 74,
+          "fraction": 0.7254901960784313
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 0,
+      "typeMix": [],
+      "sizeMix": {
+        "source": "cycleDays",
+        "avg": null,
+        "populated": 0
+      },
+      "contributorCount": 0,
+      "areaCount": 0,
+      "batchClusterCount": 0,
+      "batchClusterDay": null,
+      "batchClusterRatio": 0,
+      "agedWipRatio": 0,
+      "agedItems": 0,
+      "grainLeakCount": 0
+    },
+    "heuristic": {
+      "headline": "Only 0 contributors active vs. the usual ~5 — capacity may have been reduced (holidays, PTO, or competing priorities).",
+      "reasons": [
+        {
+          "code": "contributor-dip",
+          "detail": "Only 0 contributors active vs. the usual ~5 — capacity may have been reduced (holidays, PTO, or competing priorities)."
+        }
+      ]
+    },
+    "_mustMention": [
+      "capacity|holiday|pto|time off|vacation|out of office|fewer people|nobody|no items|zero|none"
+    ]
+  }
+}

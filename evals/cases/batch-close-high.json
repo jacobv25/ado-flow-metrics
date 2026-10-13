@@ -1,0 +1,265 @@
+{
+  "id": "batch-close-high",
+  "tags": [
+    "shaped",
+    "high",
+    "batch-close"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "high",
+    "isPartial": false,
+    "counts": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      16,
+      8
+    ],
+    "bucket": {
+      "start": "2026-09-21",
+      "end": "2026-09-27",
+      "count": 16,
+      "items": [
+        {
+          "id": 9072,
+          "title": "Add CSV export to the timeline view",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 2
+        },
+        {
+          "id": 9073,
+          "title": "Paginate the audit log",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 3
+        },
+        {
+          "id": 9074,
+          "title": "Configurable aging thresholds",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 5
+        },
+        {
+          "id": 9075,
+          "title": "Dark mode for the dashboard",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Felix Brandt",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 2
+        },
+        {
+          "id": 9076,
+          "title": "Keyboard navigation for the aging table",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Noor Haddad",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 3
+        },
+        {
+          "id": 9077,
+          "title": "Trend sparkline on summary cards",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Theo Marsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 5
+        },
+        {
+          "id": 9078,
+          "title": "Column chooser for the PR table",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 2
+        },
+        {
+          "id": 9079,
+          "title": "Group WIP table by assignee",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 3
+        },
+        {
+          "id": 9080,
+          "title": "Cache work item batches for 60s",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 5
+        },
+        {
+          "id": 9081,
+          "title": "Sortable cycle-time table",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Felix Brandt",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 2
+        },
+        {
+          "id": 9082,
+          "title": "Localize date formats",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Noor Haddad",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 3
+        },
+        {
+          "id": 9083,
+          "title": "Tag filter is case-sensitive",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Theo Marsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 5
+        },
+        {
+          "id": 9084,
+          "title": "Spinner never hides on 401",
+          "type": "Bug",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 2
+        },
+        {
+          "id": 9085,
+          "title": "Story points parsed as string",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 3
+        },
+        {
+          "id": 9086,
+          "title": "Chart tooltip stuck after filter change",
+          "type": "Bug",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 5
+        },
+        {
+          "id": 9087,
+          "title": "Null assignee crashes the aging table",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Felix Brandt",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 2
+        }
+      ]
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 5.5,
+      "medianContributors": 6,
+      "avgPointsBaseline": 3.3125,
+      "typeBaseline": [
+        {
+          "type": "User Story",
+          "count": 59,
+          "fraction": 0.7375
+        },
+        {
+          "type": "Bug",
+          "count": 21,
+          "fraction": 0.2625
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 16,
+      "typeMix": [
+        {
+          "type": "User Story",
+          "count": 11,
+          "fraction": 0.6875
+        },
+        {
+          "type": "Bug",
+          "count": 5,
+          "fraction": 0.3125
+        }
+      ],
+      "sizeMix": {
+        "source": "storyPoints",
+        "avg": 3.3,
+        "populated": 16
+      },
+      "contributorCount": 6,
+      "areaCount": 2,
+      "batchClusterCount": 16,
+      "batchClusterDay": "2026-09-25",
+      "batchClusterRatio": 1,
+      "agedWipRatio": 0,
+      "agedItems": 0,
+      "grainLeakCount": 0
+    },
+    "heuristic": {
+      "headline": "16 of 16 items closed on 2026-09-25 — likely a batch status update rather than steady-flow delivery.",
+      "reasons": [
+        {
+          "code": "batch-close",
+          "detail": "16 of 16 items closed on 2026-09-25 — likely a batch status update rather than steady-flow delivery."
+        }
+      ]
+    },
+    "_mustMention": [
+      "same day|single day|one day|batch|sprint"
+    ]
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "id": "small-sample-low",
+  "tags": [
+    "shaped",
+    "low",
+    "small-sample"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "low",
+    "isPartial": false,
+    "counts": [
+      8,
+      8,
+      8,
+      2,
+      8
+    ],
+    "bucket": {
+      "start": "2026-08-24",
+      "end": "2026-08-30",
+      "count": 2,
+      "items": [
+        {
+          "id": 9613,
+          "title": "Keyboard navigation for the aging table",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-08-27T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 3
+        },
+        {
+          "id": 9614,
+          "title": "Null assignee crashes the aging table",
+          "type": "Bug",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-08-28T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 5
+        }
+      ]
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 5.5,
+      "medianContributors": 6,
+      "avgPointsBaseline": 3.3823529411764706,
+      "typeBaseline": [
+        {
+          "type": "User Story",
+          "count": 25,
+          "fraction": 0.7352941176470589
+        },
+        {
+          "type": "Bug",
+          "count": 9,
+          "fraction": 0.2647058823529412
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 2,
+      "typeMix": [
+        {
+          "type": "User Story",
+          "count": 1,
+          "fraction": 0.5
+        },
+        {
+          "type": "Bug",
+          "count": 1,
+          "fraction": 0.5
+        }
+      ],
+      "sizeMix": {
+        "source": "storyPoints",
+        "avg": 4,
+        "populated": 2
+      },
+      "contributorCount": 2,
+      "areaCount": 2,
+      "batchClusterCount": 1,
+      "batchClusterDay": "2026-08-27",
+      "batchClusterRatio": 0.5,
+      "agedWipRatio": 0,
+      "agedItems": 0,
+      "grainLeakCount": 0
+    },
+    "heuristic": {
+      "headline": "Only 2 contributors active vs. the usual ~6 — capacity may have been reduced (holidays, PTO, or competing priorities).",
+      "reasons": [
+        {
+          "code": "contributor-dip",
+          "detail": "Only 2 contributors active vs. the usual ~6 — capacity may have been reduced (holidays, PTO, or competing priorities)."
+        }
+      ]
+    }
+  }
+}

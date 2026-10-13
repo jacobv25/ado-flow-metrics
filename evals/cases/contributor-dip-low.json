@@ -1,0 +1,122 @@
+{
+  "id": "contributor-dip-low",
+  "tags": [
+    "shaped",
+    "low",
+    "capacity"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "low",
+    "isPartial": false,
+    "counts": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      3,
+      8
+    ],
+    "bucket": {
+      "start": "2026-09-21",
+      "end": "2026-09-27",
+      "count": 3,
+      "items": [
+        {
+          "id": 9160,
+          "title": "Add CSV export to the timeline view",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-21T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 3
+        },
+        {
+          "id": 9161,
+          "title": "Tag filter is case-sensitive",
+          "type": "Bug",
+          "priority": 2,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-22T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 5
+        },
+        {
+          "id": 9162,
+          "title": "Paginate the audit log",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-23T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 2
+        }
+      ]
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 5,
+      "medianContributors": 6,
+      "avgPointsBaseline": 3.3582089552238807,
+      "typeBaseline": [
+        {
+          "type": "User Story",
+          "count": 50,
+          "fraction": 0.746268656716418
+        },
+        {
+          "type": "Bug",
+          "count": 17,
+          "fraction": 0.2537313432835821
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 3,
+      "typeMix": [
+        {
+          "type": "User Story",
+          "count": 2,
+          "fraction": 0.6666666666666666
+        },
+        {
+          "type": "Bug",
+          "count": 1,
+          "fraction": 0.3333333333333333
+        }
+      ],
+      "sizeMix": {
+        "source": "storyPoints",
+        "avg": 3.3,
+        "populated": 3
+      },
+      "contributorCount": 1,
+      "areaCount": 2,
+      "batchClusterCount": 1,
+      "batchClusterDay": "2026-09-21",
+      "batchClusterRatio": 0.3333333333333333,
+      "agedWipRatio": 0,
+      "agedItems": 0,
+      "grainLeakCount": 0
+    },
+    "heuristic": {
+      "headline": "Only 1 contributor active vs. the usual ~6 — capacity may have been reduced (holidays, PTO, or competing priorities).",
+      "reasons": [
+        {
+          "code": "contributor-dip",
+          "detail": "Only 1 contributor active vs. the usual ~6 — capacity may have been reduced (holidays, PTO, or competing priorities)."
+        }
+      ]
+    },
+    "_mustMention": [
+      "capacity|fewer people|fewer contributors|one person|single contributor|out|pto|holiday|unplanned"
+    ]
+  }
+}

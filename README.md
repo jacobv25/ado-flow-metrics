@@ -54,6 +54,30 @@ Your PAT needs **Work Items (Read)** and **Code (Read)** scopes. See [`.env.exam
 
 **Forecast** — weekly throughput over a 28–180 day window with mean and IQR band, cycle-time percentiles, and two Monte Carlo questions: *how long for N items?* (p50 / p70 / p85 / p95 dates) and *how many by a date?* The **Outlier Insights** panel flags unusual weeks (Tukey IQR fence, MAD fallback for small samples) and explains each one from the items in that bucket: type mix, size mix, contributor count, batch-close clusters, aged-WIP flushes.
 
+## "Explain with AI" — and the eval that keeps it honest
+
+Every flagged week on the Forecast page has an **Explain with AI** button. The server assembles a data packet from the numbers already on the page (count vs. median, baseline, the rule engine's findings, the completed items) and asks Claude for a **schema-validated** explanation: a headline, a two-to-four-sentence narrative, up to three likely causes with the evidence for each, questions to ask the team, and caveats. The UI renders fields, never prose it has to parse.
+
+Guardrails are in the design, not just the prompt:
+
+- **Assignee names never leave the server.** The packet carries contributor *counts*, so the explanation talks about capacity, not people.
+- **Ticket titles are treated as untrusted data.** They are fenced in the prompt and the system prompt says to ignore instructions inside them; the eval includes a prompt-injection case.
+- **Only numbers from the packet may appear**, the week must be described in the right direction, certainty language is banned, and a partial week must be called out as such.
+- **Without an API key** the button shows a deterministic sample in demo mode and is hidden in live mode. Set `ANTHROPIC_API_KEY` (and optionally `EXPLAIN_MODEL`, default `claude-opus-5-5`) to turn it on.
+
+The feature ships with an **eval harness** in [`evals/`](evals/) rather than a vibe check:
+
+```sh
+npm run eval          # 11 golden cases × Claude under test, deterministic checks + LLM judge (needs ANTHROPIC_API_KEY)
+npm run eval:stub     # offline self-test of the harness on the deterministic stub (what CI runs without a key)
+npm run eval:cases    # regenerate the golden cases
+```
+
+- **Golden cases** ([`evals/cases/`](evals/cases/)) — three straight from demo mode (holiday dip, catch-up spike, partial current week) plus eight hand-shaped buckets that each isolate one mechanism: batch close, contributor dip, aged-WIP flush, bug bash, oversized items, epic-level grain leak, a prompt-injection attempt, and a small-sample (MAD) week.
+- **Deterministic graders** ([`evals/checks.js`](evals/checks.js)) — schema validity, headline length, direction consistency, no invented numbers, no person names, hedging, partial-week caveat, injection resistance, questions phrased as questions, and per-case must-mention terms. Each grader is unit-tested against a deliberately wrong answer so the eval can't pass garbage.
+- **LLM judge** ([`evals/judge.js`](evals/judge.js)) — a different model (`claude-sonnet-5-5`) scores faithfulness, actionability, and tone independently, 1–5 with a rationale, as structured output. It is told not to reward length and sees the candidate as fenced data.
+- **Pass criteria** — every deterministic check on every row, and a judge pass rate of at least 80% (all three scores ≥ 4). The runner recomputes the headline numbers from the per-case rows and writes `evals/results/latest.md`.
+
 ## How the forecast works
 
 Instead of sizing tickets, the forecast samples the team's own history. Each trial draws random past weeks (with replacement) and accumulates completed items until the batch is done; thousands of trials give a distribution of finish weeks, read off at the 50/70/85/95th percentiles. The math lives in [`lib/montecarlo.js`](lib/montecarlo.js) — pure, dependency-free, seedable, and shared verbatim between Node and the browser. Assumptions are stated on the page itself (items are sized like past work, WIP stays disciplined, the window is representative).
@@ -68,13 +92,15 @@ lib/adoClient.js       The only place HTTPS calls happen. PAT stays here.
 lib/demoAdo.js         Fake ADO for DEMO_MODE: seeded synthetic team, same endpoints.
 lib/montecarlo.js      Forecasting (pure, UMD, seedable).
 lib/outliers.js        Outlier detection + attribution (pure, UMD).
+lib/explain.js         "Explain with AI": payload schema, prompt, Claude call (structured output), offline stub.
+evals/                 Eval harness for the AI feature: golden cases, deterministic graders, LLM judge, runner.
 public/                Three hand-written pages + shared common.js/styles.css. Chart.js via SRI-pinned CDN.
 tests/unit/            Vitest unit tests for the analytics modules and the demo fake.
 tests/e2e/             Playwright suite that boots demo mode and drives all three pages.
 docs/plans/            The design docs each feature was built from (see below).
 ```
 
-Two dependencies at runtime: `express` and `dotenv`.
+Runtime dependencies: `express`, `dotenv`, `@anthropic-ai/sdk`, `zod`.
 
 ## Design docs
 
@@ -97,15 +123,17 @@ npm run test:all
 - `outliers.test.js` — IQR and MAD detection paths, degenerate inputs, baseline computation, bucket summaries, explanation narratives.
 - `montecarlo.test.js` — the forecasting contract with an injected seeded RNG: degenerate samples give exact answers, percentiles are monotonic, same seed → same forecast, zero-throughput history returns the sentinel instead of looping, inverted `atLeastXX` percentiles order correctly.
 - `demoAdo.test.js` — the fake honours the slice of the Azure DevOps REST contract `server.js` depends on: WIQL state/type/date filters and `$top`, batch field selection with `errorPolicy: Omit`, PR pagination and `minTime`.
+- `explain.test.js` — the AI feature with a fake Anthropic client: payload validation, the prompt never contains assignee names, partial weeks are flagged, structured-output request shape, refusal / truncation / SDK-error paths.
+- `evalChecks.test.js` — the eval's graders themselves: the stub passes every check on every case, and each deliberately wrong answer fails exactly the check meant to catch it.
 
 **End-to-end (Playwright, `tests/e2e/`)** — hermetic, against demo mode on a throwaway port:
 
 - `api.spec.js` — every route's shape, plus input validation (`400` on malformed states, bad windows, unknown PR status). Includes a regression for the priority field that used to come back `null`.
 - `work-items.spec.js` — summary cards agree with the table, most-aged-first ordering, search, type and tag filters, threshold settings persisting across a reload.
 - `pull-requests.spec.js` — review-state filters, conflicts-only, cycle-time window switch, and a regression for the "undefined PRs merged" caption.
-- `forecast.spec.js` — throughput cards are internally consistent, outlier panel flags the holiday dip low and the catch-up week high, "how long" yields four ordered dates, a deadline switches to "how many" mode, cycle-time percentiles are ordered.
+- `forecast.spec.js` — throughput cards are internally consistent, outlier panel flags the holiday dip low and the catch-up week high, "how long" yields four ordered dates, a deadline switches to "how many" mode, cycle-time percentiles are ordered, and "Explain with AI" renders a structured explanation (the demo stub, since the suite runs without a key).
 
-CI runs the unit suite on Node 20 and 22 and the Playwright suite on Chromium; a failed e2e run uploads the HTML report as an artifact.
+CI runs the unit suite on Node 20 and 22, the Playwright suite on Chromium, and the eval — live against Claude when an `ANTHROPIC_API_KEY` secret is configured, otherwise the harness self-test on the stub. Eval results are uploaded as an artifact on every run.
 
 ## Known limitations
 
@@ -115,7 +143,7 @@ CI runs the unit suite on Node 20 and 22 and the Playwright suite on Chromium; a
 
 ## Built with
 
-Node 18+, Express, Chart.js, Vitest, Playwright, and an AI coding agent (Claude Code) in the loop — the plan documents above were the planning artifacts for each session.
+Node 18+, Express, Chart.js, the Anthropic SDK with structured outputs, Vitest, Playwright, and an AI coding agent (Claude Code) in the loop — the plan documents above were the planning artifacts for each session.
 
 ## License
 

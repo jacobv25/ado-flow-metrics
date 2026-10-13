@@ -123,6 +123,17 @@
     }
     .outlier-card.high { border-color: var(--orange); background: var(--orange-bg); }
     .outlier-card.low  { border-color: var(--yellow); background: var(--yellow-bg); }
+    .oc-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .oc-ai-btn { border-color: var(--blue, #2563eb); color: var(--blue, #2563eb); }
+    .oc-ai { margin-top:10px; padding:12px 14px; background:#fff; border:1px solid var(--gray-200); border-radius:var(--radius); font-size:13px; line-height:1.5; }
+    .oc-ai .ai-headline { font-weight:600; margin-bottom:4px; }
+    .oc-ai .ai-section { margin-top:8px; }
+    .oc-ai .ai-section h5 { margin:0 0 4px; font-size:11px; letter-spacing:.04em; text-transform:uppercase; color:var(--gray-600); }
+    .oc-ai ul { margin:0; padding-left:18px; }
+    .oc-ai .conf { display:inline-block; font-size:10px; padding:1px 6px; border-radius:10px; background:var(--gray-100); color:var(--gray-600); margin-left:6px; vertical-align:middle; }
+    .oc-ai .ai-foot { margin-top:8px; font-size:11px; color:var(--gray-600); }
+    .oc-ai .ai-sample { background:var(--yellow-bg); border:1px solid var(--yellow); padding:1px 6px; border-radius:10px; font-size:10px; margin-right:6px; }
+    .oc-ai.error { border-color: var(--red); color: var(--red); }
     .outlier-card .oc-badge {
       font-size: 10px; font-weight: 700; letter-spacing: .04em;
       padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
@@ -1127,6 +1138,7 @@ function renderOutlierInsights() {
     return;
   }
 
+  const aiMode = (window._serverConfig && window._serverConfig.ai && window._serverConfig.ai.mode) || 'off';
   let html = '<div class="outlier-cards">';
   for (const idx of flagged) {
     const bucket  = throughputData.buckets[idx];
@@ -1144,12 +1156,84 @@ function renderOutlierInsights() {
         '<div class="oc-week">Week of ' + weekLabel + '</div>' +
         '<div class="oc-count">' + bucket.count + ' items' + medianStr + '</div>' +
         '<div class="oc-headline">' + esc(explain.headline) + '</div>' +
-        '<button class="oc-detail-btn" onclick="showDrillDown(' + idx + ')">View detail &rarr;</button>' +
+        '<div class="oc-actions">' +
+          '<button class="oc-detail-btn" onclick="showDrillDown(' + idx + ')">View detail &rarr;</button>' +
+          (aiMode !== 'off'
+            ? '<button class="oc-detail-btn oc-ai-btn" onclick="explainWithAi(' + idx + ', this)">&#x2728; Explain with AI</button>'
+            : '') +
+        '</div>' +
+        '<div class="oc-ai" id="ocAi-' + idx + '" style="display:none"></div>' +
       '</div>' +
     '</div>';
   }
   html += '</div>';
   body.innerHTML = html;
+}
+
+// ─── AI explanation ──────────────────────────────────────────────────────────
+/**
+ * Ask the server (and Claude, when a key is configured) to explain one flagged
+ * bucket. Everything the model sees is assembled here from data already on the
+ * page; assignee names are stripped server-side before the prompt is built.
+ */
+async function explainWithAi(idx, btn) {
+  const bucket = throughputData && throughputData.buckets[idx];
+  const box    = document.getElementById('ocAi-' + idx);
+  if (!bucket || !box) return;
+
+  const counts      = throughputData.buckets.map(b => b.count);
+  const prefs       = getPrefs();
+  const sensitivity = parseFloat(prefs.outlierSensitivity || '1.5');
+  const olResult    = olDetectOutliers(counts, sensitivity);
+  const baseline    = olComputeBaseline(throughputData.buckets);
+  const summary     = olSummarizeBucket(bucket, baseline);
+  const flag        = olResult.flags[idx] || (bucket.count < olResult.median ? 'low' : 'high');
+  const heuristic   = olExplainOutlier(bucket, summary, baseline, flag);
+  const isPartial   = bucket.end >= todayIso();
+
+  const payload = {
+    interval: throughputData.interval || 'week',
+    flag, isPartial, counts,
+    bucket: { start: bucket.start, end: bucket.end, count: bucket.count,
+              items: (bucket.items || []).map(i => ({ id: i.id, title: i.title, type: i.type, priority: i.priority,
+                       area: i.area, cycleDays: i.cycleDays, storyPoints: i.storyPoints, closedDate: i.closedDate })) },
+    baseline: { medianCount: baseline.medianCount, medianCycleDays: baseline.medianCycleDays,
+                medianContributors: baseline.medianContributors, avgPointsBaseline: baseline.avgPointsBaseline,
+                typeBaseline: baseline.typeBaseline },
+    summary, heuristic,
+  };
+
+  box.style.display = '';
+  box.className = 'oc-ai';
+  box.innerHTML = '<span class="spinner on" style="vertical-align:middle"></span> Asking for an explanation&hellip;';
+  if (btn) btn.disabled = true;
+  try {
+    const res  = await fetch('/api/explain-outlier', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || ('Server error ' + res.status));
+    box.innerHTML = renderAiExplanation(json);
+  } catch (err) {
+    box.className = 'oc-ai error';
+    box.textContent = '\u26A0\uFE0F ' + err.message;
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderAiExplanation(result) {
+  const e = result.explanation;
+  const li = arr => arr.map(x => '<li>' + esc(x) + '</li>').join('');
+  let html = '<div class="ai-headline">' + esc(e.headline) + '</div>';
+  html += '<div>' + esc(e.narrative) + '</div>';
+  html += '<div class="ai-section"><h5>Likely causes</h5><ul>' +
+    e.likelyCauses.map(c => '<li><strong>' + esc(c.cause) + '</strong><span class="conf">' + esc(c.confidence) + '</span><br><span style="color:var(--gray-600)">' + esc(c.evidence) + '</span></li>').join('') +
+    '</ul></div>';
+  html += '<div class="ai-section"><h5>Questions to ask</h5><ul>' + li(e.questionsToAsk) + '</ul></div>';
+  if (e.caveats && e.caveats.length) html += '<div class="ai-section"><h5>Caveats</h5><ul>' + li(e.caveats) + '</ul></div>';
+  html += '<div class="ai-foot">' + (result.source === 'stub'
+    ? '<span class="ai-sample">Sample explanation</span>Set ANTHROPIC_API_KEY on the server to get a live explanation from Claude.'
+    : 'Generated by ' + esc(result.model || 'Claude') + ' from the numbers on this page. Assignee names are never sent.') + '</div>';
+  return html;
 }
 
 // ─── Drill-down panel ────────────────────────────────────────────────────────
@@ -1706,6 +1790,7 @@ function renderCycleTimeChart() {
   dl.min = tomorrow.toISOString().slice(0, 10);
 
   const cfg = await loadServerConfig();
+  window._serverConfig = cfg;
   if (cfg) {
     window._projectUrl = cfg.projectUrl;
     loadData();

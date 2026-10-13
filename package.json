@@ -10,14 +10,19 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:all": "vitest run && playwright test"
+    "test:all": "vitest run && playwright test",
+    "eval": "node evals/run.mjs",
+    "eval:stub": "node evals/run.mjs --stub --no-judge",
+    "eval:cases": "node evals/cases/generate.mjs"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "zod": "^4.6.7"
   },
   "license": "MIT",
   "devDependencies": {

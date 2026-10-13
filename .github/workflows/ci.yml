@@ -39,3 +39,26 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  eval:
+    name: Eval (explain-this-week)
+    needs: [unit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run eval (live with ANTHROPIC_API_KEY secret, otherwise the offline harness self-test)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then npm run eval; else echo "No ANTHROPIC_API_KEY secret — running harness self-test on the stub"; npm run eval:stub; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: evals/results/
+          retention-days: 30

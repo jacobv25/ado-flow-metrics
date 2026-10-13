@@ -1,0 +1,269 @@
+{
+  "id": "grain-leak-high",
+  "tags": [
+    "shaped",
+    "high",
+    "grain-leak"
+  ],
+  "payload": {
+    "interval": "week",
+    "flag": "high",
+    "isPartial": false,
+    "counts": [
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      15,
+      8
+    ],
+    "bucket": {
+      "start": "2026-09-21",
+      "end": "2026-09-27",
+      "count": 15,
+      "items": [
+        {
+          "id": 9483,
+          "title": "Add CSV export to the timeline view",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Felix Brandt",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-24T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 2
+        },
+        {
+          "id": 9484,
+          "title": "Paginate the audit log",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Noor Haddad",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 3
+        },
+        {
+          "id": 9485,
+          "title": "Configurable aging thresholds",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Theo Marsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-21T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 5
+        },
+        {
+          "id": 9486,
+          "title": "Dark mode for the dashboard",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-22T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 2
+        },
+        {
+          "id": 9487,
+          "title": "Keyboard navigation for the aging table",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-23T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 3
+        },
+        {
+          "id": 9488,
+          "title": "Trend sparkline on summary cards",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-24T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 5
+        },
+        {
+          "id": 9489,
+          "title": "Column chooser for the PR table",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Felix Brandt",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 2
+        },
+        {
+          "id": 9490,
+          "title": "Group WIP table by assignee",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Noor Haddad",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-21T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 3
+        },
+        {
+          "id": 9491,
+          "title": "Cache work item batches for 60s",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Theo Marsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-22T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 5
+        },
+        {
+          "id": 9492,
+          "title": "Sortable cycle-time table",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Rosa Imani",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-23T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 2
+        },
+        {
+          "id": 9493,
+          "title": "Localize date formats",
+          "type": "User Story",
+          "priority": 2,
+          "assignedTo": "Kenji Walsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-24T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 3
+        },
+        {
+          "id": 9494,
+          "title": "Inline edit of work item priority",
+          "type": "User Story",
+          "priority": 3,
+          "assignedTo": "Amara Osei",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-25T15:00:00.000Z",
+          "cycleDays": 6,
+          "storyPoints": 5
+        },
+        {
+          "id": 9495,
+          "title": "Pull request analytics",
+          "type": "Feature",
+          "priority": 2,
+          "assignedTo": "Felix Brandt",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-21T15:00:00.000Z",
+          "cycleDays": 7,
+          "storyPoints": 2
+        },
+        {
+          "id": 9496,
+          "title": "Probabilistic forecasting",
+          "type": "Feature",
+          "priority": 3,
+          "assignedTo": "Noor Haddad",
+          "area": "Demo\\Platform",
+          "closedDate": "2026-09-22T15:00:00.000Z",
+          "cycleDays": 4,
+          "storyPoints": 3
+        },
+        {
+          "id": 9497,
+          "title": "Self-serve onboarding",
+          "type": "Epic",
+          "priority": 2,
+          "assignedTo": "Theo Marsh",
+          "area": "Demo\\Web",
+          "closedDate": "2026-09-23T15:00:00.000Z",
+          "cycleDays": 5,
+          "storyPoints": 5
+        }
+      ]
+    },
+    "baseline": {
+      "medianCount": 8,
+      "medianCycleDays": 5,
+      "medianContributors": 6,
+      "avgPointsBaseline": 3.329113924050633,
+      "typeBaseline": [
+        {
+          "type": "User Story",
+          "count": 60,
+          "fraction": 0.759493670886076
+        },
+        {
+          "type": "Bug",
+          "count": 16,
+          "fraction": 0.20253164556962025
+        },
+        {
+          "type": "Feature",
+          "count": 2,
+          "fraction": 0.02531645569620253
+        },
+        {
+          "type": "Epic",
+          "count": 1,
+          "fraction": 0.012658227848101266
+        }
+      ]
+    },
+    "summary": {
+      "itemCount": 15,
+      "typeMix": [
+        {
+          "type": "User Story",
+          "count": 12,
+          "fraction": 0.8
+        },
+        {
+          "type": "Feature",
+          "count": 2,
+          "fraction": 0.13333333333333333
+        },
+        {
+          "type": "Epic",
+          "count": 1,
+          "fraction": 0.06666666666666667
+        }
+      ],
+      "sizeMix": {
+        "source": "storyPoints",
+        "avg": 3.3,
+        "populated": 15
+      },
+      "contributorCount": 6,
+      "areaCount": 2,
+      "batchClusterCount": 3,
+      "batchClusterDay": "2026-09-24",
+      "batchClusterRatio": 0.2,
+      "agedWipRatio": 0,
+      "agedItems": 0,
+      "grainLeakCount": 3
+    },
+    "heuristic": {
+      "headline": "3 items are of type Epic/Feature — these are not comparable to Stories/Bugs and inflate the count.",
+      "reasons": [
+        {
+          "code": "grain-leak",
+          "detail": "3 items are of type Epic/Feature — these are not comparable to Stories/Bugs and inflate the count."
+        }
+      ]
+    },
+    "_mustMention": [
+      "feature|epic"
+    ]
+  }
+}

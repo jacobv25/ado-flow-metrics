@@ -70,3 +70,34 @@ test.describe('/api', () => {
     expect(r.startField).toBe('ActivatedDate');
   });
 });
+
+test.describe('/api/explain-outlier', () => {
+  test('config advertises the stub when no key is configured', async ({ request }) => {
+    const cfg = await (await request.get('/api/config')).json();
+    expect(cfg.ai).toEqual({ mode: 'stub', model: null });
+  });
+  test('rejects a malformed payload with 400 and a field path', async ({ request }) => {
+    const res = await request.post('/api/explain-outlier', { data: { flag: 'low' } });
+    expect(res.status()).toBe(400);
+    expect((await res.json()).error).toMatch(/Invalid explain payload/);
+  });
+  test('returns a schema-shaped explanation built from the throughput data', async ({ request }) => {
+    const tp = await (await request.get('/api/throughput?days=84&interval=week')).json();
+    const bucket = tp.buckets.find(b => b.count > 0);
+    const payload = {
+      flag: 'high', isPartial: false, counts: tp.buckets.map(b => b.count),
+      bucket: { start: bucket.start, end: bucket.end, count: bucket.count, items: bucket.items },
+      baseline: { medianCount: tp.perInterval.mean, medianCycleDays: 5, medianContributors: 5, avgPointsBaseline: 3, typeBaseline: [] },
+      summary: { itemCount: bucket.count, typeMix: [], sizeMix: { source: 'cycleDays', avg: 5, populated: bucket.count }, contributorCount: 4, areaCount: 2,
+                 batchClusterCount: 2, batchClusterDay: bucket.start, batchClusterRatio: 0.2, agedWipRatio: 0, agedItems: 0, grainLeakCount: 0 },
+      heuristic: { headline: 'test', reasons: [] },
+    };
+    const res = await request.post('/api/explain-outlier', { data: payload });
+    expect(res.ok()).toBeTruthy();
+    const body = await res.json();
+    expect(body.source).toBe('stub');
+    expect(body.explanation).toMatchObject({ headline: expect.any(String), narrative: expect.any(String) });
+    expect(body.explanation.likelyCauses.length).toBeGreaterThan(0);
+    expect(body.explanation.questionsToAsk.length).toBeGreaterThan(0);
+  });
+});

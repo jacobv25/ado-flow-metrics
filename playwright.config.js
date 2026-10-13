@@ -17,7 +17,7 @@ module.exports = defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: `DEMO_MODE=true PORT=${PORT} node server.js`,
+    command: `DEMO_MODE=true ANTHROPIC_API_KEY= ANTHROPIC_AUTH_TOKEN= PORT=${PORT} node server.js`,
     url: `http://localhost:${PORT}/api/config`,
     reuseExistingServer: !process.env.CI,
     timeout: 15_000,
