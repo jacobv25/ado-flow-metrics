@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:   # run the live eval on demand
 
 jobs:
   unit:
@@ -46,16 +47,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The live eval spends real API credit, so it only runs when something
+      # that can change the model's output changed (or on manual dispatch).
+      # Every other push runs the free harness self-test on the stub instead.
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            ai:
+              - 'lib/explain.js'
+              - 'evals/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Run eval (live with ANTHROPIC_API_KEY secret, otherwise the offline harness self-test)
+      - name: Run eval (live when the AI code changed and the key is present, otherwise the offline harness self-test)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_CHANGED: ${{ steps.changes.outputs.ai }}
+          MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          if [ -n "$ANTHROPIC_API_KEY" ]; then npm run eval; else echo "No ANTHROPIC_API_KEY secret — running harness self-test on the stub"; npm run eval:stub; fi
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "No ANTHROPIC_API_KEY secret — running harness self-test on the stub"; npm run eval:stub
+          elif [ "$AI_CHANGED" = "true" ] || [ "$MANUAL" = "true" ]; then
+            npm run eval
+          else
+            echo "AI code unchanged — skipping the live eval to save credit; running harness self-test on the stub"; npm run eval:stub
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

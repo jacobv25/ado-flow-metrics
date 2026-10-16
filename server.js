@@ -13,6 +13,10 @@ const DEMO_MODE = process.env.DEMO_MODE === 'true';
 const { adoRequest: liveRequest, ADO_API_VERSION } = require('./lib/adoClient');
 const adoRequest = DEMO_MODE ? require('./lib/demoAdo').demoRequest : liveRequest;
 const explainLib = require('./lib/explain');
+const { createCache, keyFor } = require('./lib/explainCache');
+// Explanations are cached per exact payload + model for a day, so repeat clicks
+// on the same outlier cost no tokens. `?refresh=1` forces a fresh model call.
+const explainCache = createCache({ ttlMs: 24 * 60 * 60 * 1000, max: 200 });
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || '3333', 10);
@@ -639,8 +643,17 @@ app.get('/api/wi-cycle-time', async (req, res) => {
 // Returns a schema-validated explanation from Claude (or the demo stub).
 app.post('/api/explain-outlier', async (req, res) => {
   try {
-    const result = await explainLib.explain(req.body || {});
-    res.json(result);
+    const payload = req.body || {};
+    const key     = keyFor(payload, explainLib.MODEL);
+    const refresh = req.query.refresh === '1';
+    if (!refresh) {
+      const hit = explainCache.get(key);
+      if (hit) return res.json({ ...hit, cached: true });
+    }
+    const result = await explainLib.explain(payload);
+    if (result.source === 'claude') explainCache.set(key, result); // the stub is free; only cache paid answers
+    if (result.usage) console.log(`[explain-outlier] ${result.model} tokens in=${result.usage.input} cached=${result.usage.cacheRead} out=${result.usage.output}`);
+    res.json({ ...result, cached: false });
   } catch (err) {
     if (err.code === 'invalid') return res.status(400).json({ error: err.message });
     if (err.code === 'off')     return res.status(503).json({ error: err.message });

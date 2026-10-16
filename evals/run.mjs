@@ -43,7 +43,7 @@ const mode = STUB ? 'stub' : 'claude';
 console.log(`\nExplain-this-week eval — ${cases.length} cases × ${REPS} rep(s) — model under test: ${mode}${NO_JUDGE ? '' : ' — judge: ' + JUDGE_MODEL}\n`);
 
 const rows = [];
-let usage = { input: 0, output: 0, judgeInput: 0, judgeOutput: 0 };
+let usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, judgeInput: 0, judgeOutput: 0, judgeCacheRead: 0, judgeCacheWrite: 0 };
 const t0 = Date.now();
 for (const c of cases) {
   for (let rep = 0; rep < REPS; rep++) {
@@ -54,6 +54,7 @@ for (const c of cases) {
     const row = { id: c.id, tags: c.tags, rep, ms: Date.now() - started, error, source: result?.source, model: result?.model };
     if (result) {
       usage.input += result.usage?.input || 0; usage.output += result.usage?.output || 0;
+      usage.cacheRead += result.usage?.cacheRead || 0; usage.cacheWrite += result.usage?.cacheWrite || 0;
       row.explanation = result.explanation;
       row.checks = runChecks(result.explanation, c.payload);
       row.deterministicPass = row.checks.every(x => x.pass);
@@ -61,6 +62,7 @@ for (const c of cases) {
         try {
           const j = await judge(result.explanation, buildPrompt(c.payload).user);
           usage.judgeInput += j.usage.input; usage.judgeOutput += j.usage.output;
+          usage.judgeCacheRead += j.usage.cacheRead || 0; usage.judgeCacheWrite += j.usage.cacheWrite || 0;
           row.judge = j; row.judgePass = judgePassed(j);
         } catch (err) { row.judge = { error: err.message }; row.judgePass = false; }
       }
@@ -102,7 +104,7 @@ const md = [
   `- Ran: ${summary.ranAt}`, `- Model under test: ${summary.modelUnderTest}${NO_JUDGE ? '' : ` · judge: ${JUDGE_MODEL}`}`,
   `- Deterministic checks: ${detPass}/${n} rows passed${Object.keys(failedChecks).length ? ' — failures: ' + JSON.stringify(failedChecks) : ''}`,
   NO_JUDGE ? '- Judge: skipped' : `- Judge: ${judgePassCount}/${judged.length} passed (${(judgeRate * 100).toFixed(0)}%, threshold ${THRESHOLD * 100}%) · avg faithfulness ${summary.judge.avg.faithfulness}, actionability ${summary.judge.avg.actionability}, tone ${summary.judge.avg.tone}`,
-  `- Tokens: ${usage.input} in / ${usage.output} out under test; ${usage.judgeInput} in / ${usage.judgeOutput} out judge`, '',
+  `- Tokens: ${usage.input} in (+${usage.cacheRead} cached, ${usage.cacheWrite} cache writes) / ${usage.output} out under test; ${usage.judgeInput} in (+${usage.judgeCacheRead} cached) / ${usage.judgeOutput} out judge`, '',
   '| case | deterministic | judge f/a/t | headline |', '|---|---|---|---|',
   ...rows.map(r => `| ${r.id}${REPS > 1 ? ' #' + r.rep : ''} | ${r.deterministicPass ? '✅' : '❌ ' + (r.checks || []).filter(x => !x.pass).map(x => x.name).join(',')} | ${r.judge && !r.judge.error ? `${r.judge.faithfulness}/${r.judge.actionability}/${r.judge.tone}` : '—'} | ${(r.explanation?.headline || r.error || '').replace(/\|/g, '/')} |`),
 ].join('\n') + '\n';

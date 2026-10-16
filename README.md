@@ -65,6 +65,13 @@ Guardrails are in the design, not just the prompt:
 - **Only numbers from the packet may appear**, the week must be described in the right direction, certainty language is banned, and a partial week must be called out as such.
 - **Without an API key** the button shows a deterministic sample in demo mode and is hidden in live mode. Set `ANTHROPIC_API_KEY` (and optionally `EXPLAIN_MODEL`, default `claude-opus-5-5`) to turn it on.
 
+Token spend is bounded by design too:
+
+- **Repeat clicks are free.** The server caches each answer for 24 hours under a hash of the exact payload and model ([`lib/explainCache.js`](lib/explainCache.js)), so the same outlier viewed again, by anyone, costs nothing. The button turns into **Regenerate**, which bypasses the cache on purpose.
+- **The system prompt is a prompt-cache breakpoint.** It is identical on every call, so after the first call in five minutes it is read at 5% of the input price. Measured on a live click: 1,772 of 2,319 input tokens came from cache, cutting the per-explanation cost by about 30% (output tokens, which the schema already keeps short, are now most of the bill). The eval's judge caches its rubric the same way.
+- **Output is capped at 1,500 tokens.** A normal explanation is about 650; the cap only bounds a runaway.
+- **Model choice is measured, not assumed.** Sonnet 5.5 at half the price scored the same with the judge as Opus 5.5 (see below), so `EXPLAIN_MODEL=claude-sonnet-5-5` is a supported, tested option.
+
 The feature ships with an **eval harness** in [`evals/`](evals/) rather than a vibe check:
 
 ```sh
@@ -79,6 +86,8 @@ npm run eval:cases    # regenerate the golden cases
 - **Pass criteria** — every deterministic check on every row, and a judge pass rate of at least 80% (all three scores ≥ 4). The runner recomputes the headline numbers from the per-case rows and writes `evals/results/latest.md`.
 
 **Latest live result** ([`evals/RESULTS.md`](evals/RESULTS.md), 2026-10-13, 11 cases × 2 reps): deterministic 22/22, judge 20/22 (91%), mean faithfulness 4.09 / actionability 4.00 / tone 4.36.
+
+**Opus vs. Sonnet** (2026-10-16, same 11 cases × 2 reps): Sonnet 5.5 scored judge 20/22 (91%), faithfulness 4.18 / actionability 3.95 / tone 4.55, indistinguishable from Opus, but failed one deterministic row with a 101-character headline against the 90-character cap, so it does not clear the gate as it stands. Opus stays the default; the comparison table is in `evals/RESULTS.md`. Half the price for the same judged quality is a strong case for tightening the headline instruction and re-running rather than paying for Opus.
 
 **What the first live run taught me.** The very first run scored 3/11 on the deterministic checks and 64% with the judge, and almost none of it was the model's fault. The number grader rejected faithful roundings of packet averages, the sentence counter split on "vs.", and the direction check didn't know "zero items" means low. Fixing the graders exposed the next layer: the judge was unstable, swinging the same case between 3 and 4 on faithfulness depending on how its rubric was worded, and a subtractive rubric made it hunt for deductions ("half the usual contributors is loosely worded, though 3 vs 6 is right"). What finally held was (1) giving the writer and the judge the *same* written definition of what "high", "medium", and "low" confidence mean, (2) scoring faithfulness on facts only and moving calibration into tone, where overconfidence already lived, and (3) putting facts into the packet that the model had been guessing at: which value in the series is the current period, and a per-day tally of closes. Two reps per case, not one, so a single noisy judgement can't flip the gate. The commit history in `evals/` shows each step.
 
@@ -129,6 +138,7 @@ npm run test:all
 - `demoAdo.test.js` — the fake honours the slice of the Azure DevOps REST contract `server.js` depends on: WIQL state/type/date filters and `$top`, batch field selection with `errorPolicy: Omit`, PR pagination and `minTime`.
 - `explain.test.js` — the AI feature with a fake Anthropic client: payload validation, the prompt never contains assignee names, partial weeks are flagged, structured-output request shape, refusal / truncation / SDK-error paths.
 - `evalChecks.test.js` — the eval's graders themselves: the stub passes every check on every case, and each deliberately wrong answer fails exactly the check meant to catch it.
+- `explainCache.test.js` — the explanation cache: the key ignores object key order but not array order or the model name, entries expire on the TTL, and the oldest entry is evicted past the cap.
 
 **End-to-end (Playwright, `tests/e2e/`)** — hermetic, against demo mode on a throwaway port:
 
@@ -137,7 +147,7 @@ npm run test:all
 - `pull-requests.spec.js` — review-state filters, conflicts-only, cycle-time window switch, and a regression for the "undefined PRs merged" caption.
 - `forecast.spec.js` — throughput cards are internally consistent, outlier panel flags the holiday dip low and the catch-up week high, "how long" yields four ordered dates, a deadline switches to "how many" mode, cycle-time percentiles are ordered, and "Explain with AI" renders a structured explanation (the demo stub, since the suite runs without a key).
 
-CI runs the unit suite on Node 20 and 22, the Playwright suite on Chromium, and the eval — live against Claude when an `ANTHROPIC_API_KEY` secret is configured, otherwise the harness self-test on the stub. Eval results are uploaded as an artifact on every run.
+CI runs the unit suite on Node 20 and 22, the Playwright suite on Chromium, and the eval. The eval runs live against Claude only when the `ANTHROPIC_API_KEY` secret is present *and* something that can change the model's output changed (`lib/explain.js`, `evals/`, the lockfile, or the workflow), or on a manual dispatch; every other push runs the free harness self-test on the stub, so a README edit costs nothing. Eval results are uploaded as an artifact on every run.
 
 ## Known limitations
 

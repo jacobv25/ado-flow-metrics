@@ -1,4 +1,5 @@
 'use strict';
+const { usageOf } = require('../lib/explain');
 
 /**
  * evals/judge.js — LLM-as-judge for the properties a regex can't see.
@@ -46,11 +47,11 @@ async function judge(explanation, promptUser, deps = {}) {
     model,
     max_tokens: 2048,
     output_config: { effort: 'medium', format: zodOutputFormat(JudgeSchema) },
-    system: JUDGE_SYSTEM,
+    system: [{ type: 'text', text: JUDGE_SYSTEM, cache_control: { type: 'ephemeral' } }], // same rubric every call → prompt cache
     messages: [{ role: 'user', content: user }],
   });
   if (!response.parsed_output) throw new Error('judge returned no parseable output');
-  return { ...response.parsed_output, model: response.model, usage: { input: response.usage.input_tokens, output: response.usage.output_tokens } };
+  return { ...response.parsed_output, model: response.model, usage: usageOf(response.usage) };
 }
 
 /** Pass threshold applied per property. */

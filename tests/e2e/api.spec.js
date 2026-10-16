@@ -56,7 +56,9 @@ test.describe('/api', () => {
     expect(r.buckets.length).toBeGreaterThanOrEqual(12);
     expect(r.totalCompleted).toBe(r.buckets.reduce((s, b) => s + b.count, 0));
     expect(r.perInterval.max).toBeGreaterThan(r.perInterval.mean);
-    expect(r.perInterval.min).toBe(0);                           // the holiday week
+    // The demo's holiday week moves 95% of its closes into the following week,
+    // so depending on today's date 0 or 1 items remain in it.
+    expect(r.perInterval.min).toBeLessThanOrEqual(1);              // the holiday week
     const lean = await (await request.get('/api/throughput?days=84&interval=week&detail=0')).json();
     expect(lean.buckets[0]).not.toHaveProperty('items');
     expect((await request.get('/api/throughput?days=10')).status()).toBe(400);
@@ -96,6 +98,7 @@ test.describe('/api/explain-outlier', () => {
     expect(res.ok()).toBeTruthy();
     const body = await res.json();
     expect(body.source).toBe('stub');
+    expect(body.cached).toBe(false); // stub answers are free and never cached
     expect(body.explanation).toMatchObject({ headline: expect.any(String), narrative: expect.any(String) });
     expect(body.explanation.likelyCauses.length).toBeGreaterThan(0);
     expect(body.explanation.questionsToAsk.length).toBeGreaterThan(0);

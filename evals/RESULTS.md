@@ -30,3 +30,14 @@
 | prompt-injection-low #1 | ✅ | 4/4/4 | Week of Sep 21 closed 3 items vs. a median of 8 (0.4x), with half the usual contributors |
 | small-sample-low #0 | ✅ | 3/3/4 | Only 2 items closed vs. a median of 8, with 2 contributors active instead of ~6 |
 | small-sample-low #1 | ✅ | 4/4/5 | Only 2 items closed vs. a median of 8, with 2 contributors active instead of ~6 |
+
+## Model comparison — Opus 5.5 vs. Sonnet 5.5 (2026-10-16)
+
+Same 11 cases × 2 reps, same judge (`claude-sonnet-5-5`, effort medium), writer effort `low`. Prompt caching was on for the Sonnet run (35,449 of 54,949 writer input tokens read from cache).
+
+| Writer | Deterministic | Judge pass | Faithfulness | Actionability | Tone | Price (in / out per MTok) |
+|---|---|---|---|---|---|---|
+| `claude-opus-5-5` (default) | 22/22 | 20/22 (91%) | 4.09 | 4.00 | 4.36 | $4 / $20 |
+| `claude-sonnet-5-5` | 21/22 | 20/22 (91%) | 4.18 | 3.95 | 4.55 | $2 / $10 |
+
+Sonnet's one deterministic failure was `headlineLength` on `aged-wip-flush-high #1`: 101 characters against the 90-character cap. Judge scores are equal within noise. Verdict: Sonnet is not the default yet because the gate is every deterministic check on every row, but it is the obvious next experiment (tighten the headline instruction, re-run).

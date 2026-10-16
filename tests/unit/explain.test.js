@@ -6,7 +6,7 @@
 import { describe, test, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { explain, explainWithClaude, stubExplanation, buildPrompt, ExplanationSchema, PayloadSchema } from '../../lib/explain.js';
+import { explain, explainWithClaude, stubExplanation, buildPrompt, ExplanationSchema, PayloadSchema, MAX_TOKENS } from '../../lib/explain.js';
 
 const caseDir = path.resolve(__dirname, '../../evals/cases');
 const load = id => JSON.parse(fs.readFileSync(path.join(caseDir, id + '.json'), 'utf8')).payload;
@@ -100,11 +100,15 @@ describe('Claude path (fake client)', () => {
     const parsed = stubExplanation(PayloadSchema.parse(base()));
     const client = fakeClient(okResponse(parsed));
     const r = await explainWithClaude(PayloadSchema.parse(base()), { client, model: 'claude-test' });
-    expect(r).toMatchObject({ source: 'claude', model: 'claude-test', explanation: parsed, usage: { input: 10, output: 5 } });
+    expect(r).toMatchObject({ source: 'claude', model: 'claude-test', explanation: parsed, usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 } });
     const req = client.calls[0];
     expect(req.model).toBe('claude-test');
     expect(req.output_config.format).toBeTruthy();
     expect(req.output_config.effort).toBe('low');
+    expect(req.max_tokens).toBe(MAX_TOKENS);
+    expect(MAX_TOKENS).toBeLessThanOrEqual(2000);
+    // The system prompt is a cache breakpoint so repeat calls read it at a tenth of the price.
+    expect(req.system).toEqual([{ type: 'text', text: expect.any(String), cache_control: { type: 'ephemeral' } }]);
     expect(req.messages).toHaveLength(1);
     expect(req.messages[0].role).toBe('user');
   });
